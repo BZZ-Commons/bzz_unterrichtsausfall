@@ -10,6 +10,11 @@ export interface CalendarDay {
   date: string;        // 'YYYY-MM-DD'
   type: DayType;
   holidayName?: string;
+  /**
+   * Reason label for a Schulausfall caused by a special event ("Veranstaltung"),
+   * e.g. "Lehrpersonenweiterbildung …". Sourced from the event period's lstext.
+   */
+  eventName?: string;
   /** Effective lessons that actually take place (excludes cancelled). */
   lessonCount?: number;
   /** Lessons that were scheduled but cancelled. */
@@ -44,13 +49,21 @@ export interface UntisClass {
 
 /**
  * Subset of WebUntis lesson fields we actually consume.
- * The library returns many more fields (startTime, endTime, kl/te/su/ro, lsnumber,
+ * The library returns many more fields (startTime, endTime, te/kl/ro, lsnumber,
  * activityType, …); they're not needed for this app.
+ *
+ * Note: `info` is intentionally NOT consumed — it's unreliable for our purposes.
  */
 export interface UntisLesson {
   id: number;
   date: number; // YYYYMMDD
-  code?: string;
+  code?: 'cancelled' | 'irregular' | string;
+  /** Subjects. Empty for special-event periods ("Veranstaltung"). */
+  su?: { name: string }[];
+  /** Free-text lesson note — carries the event name on irregular event periods. */
+  lstext?: string;
+  /** Substitution text — weak signal; used only as an eventName fallback. */
+  substText?: string;
 }
 
 /** Serializable school year shape used over the JSON API. */

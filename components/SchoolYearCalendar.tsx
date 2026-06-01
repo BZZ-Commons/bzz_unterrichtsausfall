@@ -49,7 +49,7 @@ const DayCell = memo(function DayCell({ day, href }: DayCellProps) {
       <span>{dayNum}</span>
       {(day.holidayName || day.type === 'schulausfall') && (
         <span className="text-[9px] font-normal leading-tight text-center w-full truncate">
-          {day.holidayName ?? 'kein Unterricht'}
+          {day.holidayName ?? day.eventName ?? 'kein Unterricht'}
         </span>
       )}
     </a>

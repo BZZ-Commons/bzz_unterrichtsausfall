@@ -275,6 +275,64 @@ describe('schulausfall classification', () => {
   });
 });
 
+// ─── Veranstaltung (event) → Schulausfall ─────────────────────────────────────
+
+describe('classifyDays — Veranstaltung (irregular event with no subject)', () => {
+  const makeEvent = (date: number, lstext?: string, substText?: string): UntisLesson => ({
+    id: lessonIdCounter++,
+    date,
+    code: 'irregular',
+    su: [], // no subject → not a real lesson
+    lstext,
+    substText,
+  });
+
+  it('treats a day of cancelled lessons + 1 empty-subject irregular event as schulausfall with the event name', () => {
+    // Mirrors AB24 a on 2027-07-13: 9 cancelled lessons + 1 irregular event period.
+    const lessons: UntisLesson[] = [
+      ...Array.from({ length: 9 }, () => makeLesson(20250818, 'cancelled')),
+      makeEvent(20250818, 'Lehrpersonenweiterbildung Abteilung Wirtschaft'),
+    ];
+    const days = classifyDays(SCHOOL_YEAR, [], lessons);
+    const mon = days.find((d) => d.date === '2025-08-18');
+    expect(mon?.type).toBe('schulausfall');
+    expect(mon?.eventName).toBe('Lehrpersonenweiterbildung Abteilung Wirtschaft');
+    expect(mon?.lessonCount).toBe(0);
+    expect(mon?.cancelledCount).toBe(9);
+  });
+
+  it('falls back to substText for the event name when lstext is absent', () => {
+    const lessons: UntisLesson[] = [
+      makeLesson(20250818, 'cancelled'),
+      makeEvent(20250818, undefined, 'Sporttag'),
+    ];
+    const days = classifyDays(SCHOOL_YEAR, [], lessons);
+    expect(days[0].type).toBe('schulausfall');
+    expect(days[0].eventName).toBe('Sporttag');
+  });
+
+  it('does NOT treat an irregular period that still has a subject as an event (substitution still teaches → normal)', () => {
+    const substitution: UntisLesson = {
+      id: lessonIdCounter++,
+      date: 20250818,
+      code: 'irregular',
+      su: [{ name: 'Eng' }], // subject present → real teaching
+    };
+    const lessons: UntisLesson[] = [makeLesson(20250818, 'cancelled'), substitution];
+    const days = classifyDays(SCHOOL_YEAR, [], lessons);
+    expect(days[0].type).toBe('normal');
+    expect(days[0].lessonCount).toBe(1);
+    expect(days[0].eventName).toBeUndefined();
+  });
+
+  it('does not set eventName on an ordinary all-cancelled day (regression)', () => {
+    const lessons = Array.from({ length: 5 }, () => makeLesson(20250818, 'cancelled'));
+    const days = classifyDays(SCHOOL_YEAR, [], lessons);
+    expect(days[0].type).toBe('schulausfall');
+    expect(days[0].eventName).toBeUndefined();
+  });
+});
+
 // ─── deduplicateLessons ───────────────────────────────────────────────────────
 
 describe('deduplicateLessons', () => {
@@ -451,6 +509,12 @@ describe('buildDayTooltip', () => {
 
   it('shows only cancelled when no effective lessons (Schulausfall mit Lektionen)', () => {
     expect(buildDayTooltip({ ...baseDay, type: 'schulausfall', lessonCount: 0, cancelledCount: 9 })).toBe('9 abgesagt');
+  });
+
+  it('shows the event name then cancelled count for a Veranstaltung day', () => {
+    expect(
+      buildDayTooltip({ ...baseDay, type: 'schulausfall', eventName: 'Lehrpersonenweiterbildung Abteilung Wirtschaft', lessonCount: 0, cancelledCount: 9 }),
+    ).toBe('Lehrpersonenweiterbildung Abteilung Wirtschaft, 9 abgesagt');
   });
 
   it('returns undefined when there is nothing to show (e.g. empty Schulausfall)', () => {

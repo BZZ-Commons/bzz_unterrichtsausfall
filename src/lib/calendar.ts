@@ -45,12 +45,22 @@ function buildHolidayMap(holidays: UntisHoliday[]): Map<number, string> {
 }
 
 /**
+ * A "Veranstaltung" / special-event period: irregular (deviates from the standard
+ * timetable) and carrying no subject — i.e. not a real lesson. Regular lessons are
+ * `code === undefined`; substitutions that still teach keep a subject.
+ */
+function isEventPeriod(lesson: UntisLesson): boolean {
+  return lesson.code === 'irregular' && (lesson.su?.length ?? 0) === 0;
+}
+
+/**
  * Build a human-readable tooltip for a calendar day.
  * Returns undefined when there's nothing meaningful to say (e.g. weekend, no-lessons).
  */
 export function buildDayTooltip(day: CalendarDay): string | undefined {
   if (day.holidayName) return day.holidayName;
   const parts: string[] = [];
+  if (day.eventName) parts.push(day.eventName);
   if (day.lessonCount !== undefined && day.lessonCount > 0) {
     const n = day.lessonCount;
     parts.push(`${n} ${n === 1 ? 'Lektion' : 'Lektionen'}`);
@@ -164,6 +174,7 @@ export function classifyDays(
 
     let type: DayType;
     let holidayName: string | undefined;
+    let eventName: string | undefined;
     let lessonCount: number | undefined;
     let cancelledCount: number | undefined;
 
@@ -184,23 +195,33 @@ export function classifyDays(
         }
       } else {
         const dayLessons = lessonMap.get(untisDate) ?? [];
-        cancelledCount = dayLessons.filter((l) => l.code === 'cancelled').length;
-        lessonCount = dayLessons.length - cancelledCount;
 
-        if (dayLessons.length === 0) {
-          // Is this a defined school day for this class?
-          type = schoolDays.has(isoDay) ? 'schulausfall' : 'no-lessons';
-        } else if (lessonCount === 0) {
-          // All lessons cancelled — same as having no lessons: Schulausfall
-          type = 'schulausfall';
-        } else {
+        cancelledCount = dayLessons.filter((l) => l.code === 'cancelled').length;
+        // Genuine teaching: normal lessons, plus irregular periods that still
+        // have a subject (substitutions where teaching happens). Special events
+        // ("Veranstaltung": irregular + no subject) do NOT count — see isEventPeriod.
+        lessonCount = dayLessons.filter(
+          (l) => l.code !== 'cancelled' && !isEventPeriod(l),
+        ).length;
+
+        if (lessonCount > 0) {
           type = 'normal';
+        } else if (dayLessons.length > 0) {
+          // Only cancelled lessons and/or special events → Schulausfall.
+          // Surface the event name as the reason when a Veranstaltung is present.
+          type = 'schulausfall';
+          const event = dayLessons.find(isEventPeriod);
+          if (event) eventName = event.lstext || event.substText || undefined;
+        } else {
+          // No lessons at all — is this a defined school day for this class?
+          type = schoolDays.has(isoDay) ? 'schulausfall' : 'no-lessons';
         }
       }
     }
 
     const day: CalendarDay = { date: isoDate, type };
     if (holidayName !== undefined) day.holidayName = holidayName;
+    if (eventName !== undefined) day.eventName = eventName;
     if (lessonCount !== undefined) day.lessonCount = lessonCount;
     if (cancelledCount !== undefined && cancelledCount > 0) day.cancelledCount = cancelledCount;
 
