@@ -83,18 +83,55 @@ describe('classifyDays', () => {
     }
   });
 
-  it('marks short non-ferien holidays as "feiertag"', () => {
+  it('marks short single-day holidays (Feiertag) as "ferien" with the holiday name', () => {
     const holidays: UntisHoliday[] = [{
       id: 2,
       name: 'Bundesfeiertag',
       longName: '',
       startDate: 20250818,
-      endDate: 20250818, // single day, name has no "ferien"
+      endDate: 20250818,
     }];
     const days = classifyDays(SCHOOL_YEAR, holidays, []);
     const aug18 = days.find((d) => d.date === '2025-08-18');
-    expect(aug18?.type).toBe('schulausfall');
+    expect(aug18?.type).toBe('ferien');
     expect(aug18?.holidayName).toBe('Bundesfeiertag');
+  });
+
+  it('renders a holiday on a non-school weekday as "no-lessons" (gray, no label)', () => {
+    // 5-week year so determineSchoolDays gets real data instead of the fallback.
+    const longYear: UntisSchoolYear = {
+      id: 1,
+      name: '2025/2026',
+      startDate: new Date(2025, 7, 18), // Mon Aug 18
+      endDate: new Date(2025, 8, 19),   // Fri Sep 19 (5 weeks)
+    };
+    // Lessons only on Mon–Thu in first 4 weeks → Friday is not a school day for this class.
+    const lessons: UntisLesson[] = [
+      20250818, 20250819, 20250820, 20250821,
+      20250825, 20250826, 20250827, 20250828,
+      20250901, 20250902, 20250903, 20250904,
+      20250908, 20250909, 20250910, 20250911,
+    ].map((d) => makeLesson(d));
+    // Holiday on Fri Sep 12 — class does NOT have Fridays.
+    const holidays: UntisHoliday[] = [
+      { id: 99, name: 'Karfreitag', longName: '', startDate: 20250912, endDate: 20250912 },
+    ];
+    const days = classifyDays(longYear, holidays, lessons);
+    const fri = days.find((d) => d.date === '2025-09-12');
+    expect(fri?.type).toBe('no-lessons');
+    expect(fri?.holidayName).toBeUndefined();
+  });
+
+  it('prefers longName over short name when available', () => {
+    const holidays: UntisHoliday[] = [{
+      id: 5,
+      name: 'kf',
+      longName: 'Karfreitag',
+      startDate: 20250818,
+      endDate: 20250818,
+    }];
+    const days = classifyDays(SCHOOL_YEAR, holidays, []);
+    expect(days[0].holidayName).toBe('Karfreitag');
   });
 
   it('classifies multi-day non-ferien holiday (>3 days) as "ferien"', () => {
@@ -121,7 +158,8 @@ describe('classifyDays', () => {
     }];
     const lessons = [makeLesson(20250818)];
     const days = classifyDays(SCHOOL_YEAR, holidays, lessons);
-    expect(days[0].type).toBe('schulausfall'); // holiday wins
+    expect(days[0].type).toBe('ferien'); // holiday wins, shown as ferien (violet)
+    expect(days[0].holidayName).toBe('Feiertag');
   });
 });
 
@@ -332,7 +370,7 @@ describe('classifyDays — lessonCount', () => {
     }
   });
 
-  it('lessonCount is undefined on Feiertag → schulausfall days (holiday wins over lessons)', () => {
+  it('lessonCount is undefined on Feiertag days (holiday wins over lessons, shown as ferien)', () => {
     const holidays: UntisHoliday[] = [
       { id: 1, name: 'Bundesfeiertag', longName: '', startDate: 20250818, endDate: 20250818 },
     ];
@@ -340,7 +378,7 @@ describe('classifyDays — lessonCount', () => {
     const lessons = [makeLesson(20250818), makeLesson(20250818)];
     const days = classifyDays(SCHOOL_YEAR, holidays, lessons);
     const aug18 = days.find((d) => d.date === '2025-08-18');
-    expect(aug18?.type).toBe('schulausfall');
+    expect(aug18?.type).toBe('ferien');
     expect(aug18?.holidayName).toBe('Bundesfeiertag');
     expect(aug18?.lessonCount).toBeUndefined();
   });

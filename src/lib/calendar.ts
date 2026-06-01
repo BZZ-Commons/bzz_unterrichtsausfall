@@ -1,4 +1,4 @@
-import { format, addDays, getISODay, getISOWeek, getISOWeekYear, differenceInCalendarDays } from 'date-fns';
+import { format, addDays, getISODay, getISOWeek, getISOWeekYear } from 'date-fns';
 
 /** Unique numeric key for an ISO week: YYYY * 100 + WW */
 function getWeekKey(date: Date): number {
@@ -21,38 +21,22 @@ function parseUntisDate(date: number): Date {
 }
 
 /**
- * Determine whether a WebUntis holiday is a Schulferien (vacation period)
- * or a Feiertag (public holiday).
- *
- * Heuristic:
- *  - Name contains 'ferien' (case-insensitive)  → ferien
- *  - Duration > 3 calendar days                  → ferien
- *  - Otherwise                                   → feiertag
+ * Build a map of YYYYMMDD → holiday name from WebUntis holidays.
+ * The name comes from `longName` when available, otherwise the short `name`.
+ * Whether a day actually renders as ferien (violet) or no-lessons (gray) is
+ * decided downstream in `classifyDays`, based on the class's school days.
  */
-function classifyHoliday(holiday: UntisHoliday): 'ferien' | 'feiertag' {
-  if (/ferien/i.test(holiday.name) || /ferien/i.test(holiday.longName)) return 'ferien';
-  const start = parseUntisDate(holiday.startDate);
-  const end = parseUntisDate(holiday.endDate);
-  const duration = differenceInCalendarDays(end, start) + 1;
-  return duration > 3 ? 'ferien' : 'feiertag';
-}
-
-/**
- * Build a map of YYYYMMDD → holiday info from WebUntis holidays.
- */
-function buildHolidayMap(
-  holidays: UntisHoliday[]
-): Map<number, { type: 'ferien' | 'feiertag'; name: string }> {
-  const map = new Map<number, { type: 'ferien' | 'feiertag'; name: string }>();
+function buildHolidayMap(holidays: UntisHoliday[]): Map<number, string> {
+  const map = new Map<number, string>();
 
   for (const holiday of holidays) {
-    const type = classifyHoliday(holiday);
+    const displayName = holiday.longName || holiday.name;
     let current = parseUntisDate(holiday.startDate);
     const end = parseUntisDate(holiday.endDate);
 
     while (current <= end) {
       const key = parseInt(format(current, 'yyyyMMdd'), 10);
-      map.set(key, { type, name: holiday.longName || holiday.name });
+      map.set(key, displayName);
       current = addDays(current, 1);
     }
   }
@@ -187,14 +171,15 @@ export function classifyDays(
       // Saturday or Sunday
       type = 'weekend';
     } else {
-      const holiday = holidayMap.get(untisDate);
-      if (holiday) {
+      const holidayDisplayName = holidayMap.get(untisDate);
+      if (holidayDisplayName !== undefined) {
         if (schoolDays.has(isoDay)) {
-          // School day: ferien stays ferien; feiertag becomes schulausfall
-          type = holiday.type === 'ferien' ? 'ferien' : 'schulausfall';
-          holidayName = holiday.name;
+          // Holiday (Schulferien or Feiertag) on one of the class's school days
+          // → violet with the label from the WebUntis holidays endpoint.
+          type = 'ferien';
+          holidayName = holidayDisplayName;
         } else {
-          // Not a school day for this class → gray, same as no-lessons/weekend
+          // Holiday on a weekday the class never meets → stays gray, no label.
           type = 'no-lessons';
         }
       } else {

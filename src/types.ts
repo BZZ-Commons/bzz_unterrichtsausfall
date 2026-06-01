@@ -65,3 +65,35 @@ export interface CalendarData {
   schoolYear: SchoolYearSummary;
   days: CalendarDay[];
 }
+
+// ─── Aggregated view (all classes at once) ───────────────────────────────────
+
+export type AggregatedDayType =
+  | 'normal'      // every class with school has a normal day
+  | 'irregular'   // at least one class has Schulausfall (cancelled / no effective lessons)
+  | 'ferien'      // global school vacation
+  | 'weekend'
+  | 'no-school'   // weekday outside the school calendar for everyone
+  | 'out-of-year';
+
+/** Per-class status for a single day in the aggregated view. */
+export interface ClassDayStatus {
+  className: string;
+  classId: number;
+  type: DayType;
+  lessonCount: number;
+  cancelledCount: number;
+}
+
+export interface AggregatedDay {
+  date: string;              // 'YYYY-MM-DD'
+  type: AggregatedDayType;
+  holidayName?: string;
+  /** Populated only when `type === 'irregular'` — classes with Schulausfall on this day. */
+  affectedClasses?: ClassDayStatus[];
+}
+
+export interface AggregatedCalendarData {
+  schoolYear: SchoolYearSummary;
+  days: AggregatedDay[];
+}

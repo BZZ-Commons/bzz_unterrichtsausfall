@@ -7,8 +7,18 @@ import SchoolYearCalendar from '@/components/SchoolYearCalendar';
 import SchoolYearSelector from '@/components/SchoolYearSelector';
 import CalendarLegend from '@/components/CalendarLegend';
 import IAVariantDialog from '@/components/IAVariantDialog';
-import { isIAClass, getIAVariants } from '@/src/lib/classGroups';
-import type { CalendarData, SchoolYearSummary, UntisClass } from '@/src/types';
+import ViewToggle, { type ViewMode } from '@/components/ViewToggle';
+import AggregatedCalendar from '@/components/AggregatedCalendar';
+import DayDetailsDialog from '@/components/DayDetailsDialog';
+import { isIAClass, getIAVariants, normalize } from '@/src/lib/classGroups';
+import { findSchoolYearByShort, schoolYearShort } from '@/src/lib/schoolYear';
+import type {
+  AggregatedCalendarData,
+  AggregatedDay,
+  CalendarData,
+  SchoolYearSummary,
+  UntisClass,
+} from '@/src/types';
 
 async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(url, { signal });
@@ -30,6 +40,21 @@ function pickDefaultSchoolYearId(years: SchoolYearSummary[]): number | null {
   return current?.id ?? years[0]?.id ?? null;
 }
 
+/** Read the optional `?class=<name>` query param from the browser URL. */
+function readClassParam(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get('class')?.trim();
+  return value && value.length > 0 ? value : null;
+}
+
+/** Read the optional `?schoolyear=<YY>` query param (e.g. '25' for 2025/26). */
+function readSchoolYearShortParam(): string | null {
+  if (typeof window === 'undefined') return null;
+  const raw = new URLSearchParams(window.location.search).get('schoolyear')?.trim();
+  return raw && raw.length > 0 ? raw : null;
+}
+
 export default function HomePage() {
   const [schoolYears, setSchoolYears] = useState<SchoolYearSummary[]>([]);
   const [selectedSchoolYearId, setSelectedSchoolYearId] = useState<number | null>(null);
@@ -38,17 +63,28 @@ export default function HomePage() {
   const [classesLoading, setClassesLoading] = useState(true);
   const [classesError, setClassesError] = useState<string | null>(null);
 
-  // First entry = primary class; second = picked / auto-resolved companion (if any)
+  const [viewMode, setViewMode] = useState<ViewMode>('single');
+
+  // ─── Single-class state ─────────────────────────────────────────────────────
   const [selectedFetchIds, setSelectedFetchIds] = useState<number[] | null>(null);
   const [calendarData, setCalendarData] = useState<CalendarData | null>(null);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState<string | null>(null);
-
   const [iaDialogClass, setIaDialogClass] = useState<UntisClass | null>(null);
+
+  // ─── Aggregated state ───────────────────────────────────────────────────────
+  const [aggregatedData, setAggregatedData] = useState<AggregatedCalendarData | null>(null);
+  const [aggregatedLoading, setAggregatedLoading] = useState(false);
+  const [aggregatedError, setAggregatedError] = useState<string | null>(null);
+  const [selectedAggregatedDay, setSelectedAggregatedDay] = useState<AggregatedDay | null>(null);
+
+  // Deep-link from popup → preselect class on next single-mode load
+  const pendingClassNameRef = useRef<string | null>(null);
 
   // Single in-flight controller per concern — switching mid-fetch aborts the previous request.
   const classesAbortRef = useRef<AbortController | null>(null);
   const calendarAbortRef = useRef<AbortController | null>(null);
+  const aggregatedAbortRef = useRef<AbortController | null>(null);
 
   const loadClassesForYear = useCallback(async (id: number, signal: AbortSignal) => {
     setClassesLoading(true);
@@ -65,8 +101,10 @@ export default function HomePage() {
     }
   }, []);
 
-  // StrictMode-safe bootstrap: sequential because /api/classes needs the resolved year ID.
+  // StrictMode-safe bootstrap (single AbortController shared with deep-link).
   useEffect(() => {
+    pendingClassNameRef.current = readClassParam();
+    const urlYearShort = readSchoolYearShortParam();
     const controller = new AbortController();
     classesAbortRef.current = controller;
     void (async () => {
@@ -74,13 +112,15 @@ export default function HomePage() {
         const years = await fetchJson<SchoolYearSummary[]>('/api/schoolyears', controller.signal);
         if (controller.signal.aborted) return;
         setSchoolYears(years);
-        const defaultId = pickDefaultSchoolYearId(years);
-        if (defaultId == null) {
+        // Honour the URL year if it resolves to a known year; otherwise fall back to the default.
+        const fromUrl = urlYearShort ? findSchoolYearByShort(urlYearShort, years)?.id ?? null : null;
+        const yearId = fromUrl ?? pickDefaultSchoolYearId(years);
+        if (yearId == null) {
           setClassesLoading(false);
           return;
         }
-        setSelectedSchoolYearId(defaultId);
-        await loadClassesForYear(defaultId, controller.signal);
+        setSelectedSchoolYearId(yearId);
+        await loadClassesForYear(yearId, controller.signal);
       } catch (err) {
         if (isAbortError(err)) return;
         setClassesError(err instanceof Error ? err.message : 'Fehler beim Initialisieren');
@@ -110,17 +150,41 @@ export default function HomePage() {
     }
   }, [selectedSchoolYearId]);
 
+  const loadAggregated = useCallback(async () => {
+    if (selectedSchoolYearId == null) return;
+    aggregatedAbortRef.current?.abort();
+    const controller = new AbortController();
+    aggregatedAbortRef.current = controller;
+    setAggregatedError(null);
+    setAggregatedLoading(true);
+    try {
+      const url = `/api/calendar-data-all?schoolyearId=${selectedSchoolYearId}`;
+      const data = await fetchJson<AggregatedCalendarData>(url, controller.signal);
+      if (controller.signal.aborted) return;
+      setAggregatedData(data);
+    } catch (err) {
+      if (isAbortError(err)) return;
+      setAggregatedError(err instanceof Error ? err.message : 'Fehler beim Laden der Gesamtübersicht');
+    } finally {
+      if (!controller.signal.aborted) setAggregatedLoading(false);
+    }
+  }, [selectedSchoolYearId]);
+
   const handleSchoolYearChange = useCallback(async (id: number) => {
     if (id === selectedSchoolYearId) return;
     classesAbortRef.current?.abort();
     calendarAbortRef.current?.abort();
+    aggregatedAbortRef.current?.abort();
     const controller = new AbortController();
     classesAbortRef.current = controller;
     setSelectedSchoolYearId(id);
     setSelectedFetchIds(null);
     setCalendarData(null);
     setCalendarError(null);
+    setAggregatedData(null);
+    setAggregatedError(null);
     setIaDialogClass(null);
+    setSelectedAggregatedDay(null);
     await loadClassesForYear(id, controller.signal);
   }, [selectedSchoolYearId, loadClassesForYear]);
 
@@ -150,10 +214,54 @@ export default function HomePage() {
     void loadCalendar(fetchIds);
   }, [iaDialogClass, loadCalendar]);
 
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    if (mode === viewMode) return;
+    setViewMode(mode);
+    if (mode === 'all' && aggregatedData == null && !aggregatedLoading) {
+      void loadAggregated();
+    }
+  }, [viewMode, aggregatedData, aggregatedLoading, loadAggregated]);
+
+  // Once classes are loaded, consume any pending `?class=` deep-link exactly once.
+  useEffect(() => {
+    const name = pendingClassNameRef.current;
+    if (!name || classes.length === 0) return;
+    const target = normalize(name);
+    const match = classes.find((c) => normalize(c.name) === target);
+    pendingClassNameRef.current = null;
+    if (match) {
+      setViewMode('single');
+      handleClassChange(match.id);
+    }
+  }, [classes, handleClassChange]);
+
   const selectedClassId = selectedFetchIds?.[0] ?? null;
   const selectedClass = selectedClassId != null
     ? classes.find((c) => c.id === selectedClassId)
     : undefined;
+
+  const selectedSchoolYearShort = useMemo(() => {
+    if (selectedSchoolYearId == null) return null;
+    const year = schoolYears.find((y) => y.id === selectedSchoolYearId);
+    return year ? schoolYearShort(year) : null;
+  }, [schoolYears, selectedSchoolYearId]);
+
+  // Sync URL with current state so it stays shareable / copy-pasteable.
+  // Skip while a deep-link is still pending to avoid briefly dropping `?class=`.
+  const selectedClassName = selectedClass?.name ?? null;
+  useEffect(() => {
+    if (typeof window === 'undefined' || selectedSchoolYearShort == null) return;
+    if (pendingClassNameRef.current != null) return;
+    const params = new URLSearchParams();
+    params.set('schoolyear', selectedSchoolYearShort);
+    if (viewMode === 'single' && selectedClassName) {
+      params.set('class', selectedClassName);
+    }
+    const next = `${window.location.pathname}?${params.toString()}`;
+    if (next !== window.location.pathname + window.location.search) {
+      window.history.replaceState(null, '', next);
+    }
+  }, [selectedSchoolYearShort, selectedClassName, viewMode]);
   // Only surface a companion in the header for single-companion merges (length 2).
   // Multi-companion classes (e.g. AB c → IA a+b) fall back to longName.
   const selectedCompanion = selectedFetchIds?.length === 2
@@ -165,6 +273,17 @@ export default function HomePage() {
     () => (iaDialogClass ? getIAVariants(iaDialogClass.name, classes) : null),
     [iaDialogClass, classes],
   );
+
+  const showSingleEmptyState =
+    viewMode === 'single' && !selectedClassId && !calendarLoading;
+  const showSingleCalendar =
+    viewMode === 'single' && calendarData && !calendarLoading && selectedClassId != null;
+  const showAggregatedCalendar =
+    viewMode === 'all' && aggregatedData && !aggregatedLoading;
+  const showAggregatedLoading = viewMode === 'all' && aggregatedLoading;
+  const showSingleLoading = viewMode === 'single' && calendarLoading;
+  const showSingleError = viewMode === 'single' && calendarError && !calendarLoading;
+  const showAggregatedError = viewMode === 'all' && aggregatedError && !aggregatedLoading;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100">
@@ -190,25 +309,31 @@ export default function HomePage() {
                 onChange={handleSchoolYearChange}
               />
             )}
-            {classesError ? (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <AlertCircle className="w-4 h-4" />
-                {classesError}
-              </p>
-            ) : (
-              <ClassSelector
-                classes={classes}
-                selectedId={selectedClassId}
-                onChange={handleClassChange}
-                loading={classesLoading}
-              />
+            {viewMode === 'single' && (
+              classesError ? (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" />
+                  {classesError}
+                </p>
+              ) : (
+                <ClassSelector
+                  classes={classes}
+                  selectedId={selectedClassId}
+                  onChange={handleClassChange}
+                  loading={classesLoading}
+                />
+              )
             )}
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
-        {!selectedClassId && !calendarLoading && (
+        <div className="mb-6 flex justify-center sm:justify-start">
+          <ViewToggle value={viewMode} onChange={handleViewModeChange} />
+        </div>
+
+        {showSingleEmptyState && (
           <div className="text-center py-24">
             <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center mx-auto mb-4">
               <CalendarDays className="w-8 h-8 text-indigo-400" />
@@ -222,16 +347,18 @@ export default function HomePage() {
           </div>
         )}
 
-        {calendarLoading && (
+        {(showSingleLoading || showAggregatedLoading) && (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
             <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
             <p className="text-sm text-slate-500">
-              Lade Stundenplan für das gesamte Schuljahr …
+              {viewMode === 'all'
+                ? 'Lade Stundenpläne aller Klassen — das kann einen Moment dauern …'
+                : 'Lade Stundenplan für das gesamte Schuljahr …'}
             </p>
           </div>
         )}
 
-        {calendarError && !calendarLoading && (
+        {showSingleError && (
           <div className="max-w-lg mx-auto mt-8 p-5 bg-red-50 border border-red-200 rounded-xl flex gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
             <div>
@@ -241,7 +368,17 @@ export default function HomePage() {
           </div>
         )}
 
-        {calendarData && !calendarLoading && selectedClassId != null && (
+        {showAggregatedError && (
+          <div className="max-w-lg mx-auto mt-8 p-5 bg-red-50 border border-red-200 rounded-xl flex gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-red-800">Fehler beim Laden</p>
+              <p className="text-sm text-red-600 mt-0.5">{aggregatedError}</p>
+            </div>
+          </div>
+        )}
+
+        {showSingleCalendar && calendarData && selectedClassId != null && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6 pb-4 border-b border-slate-100">
               <div>
@@ -256,7 +393,7 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="sm:ml-auto">
-                <CalendarLegend />
+                <CalendarLegend variant="single" />
               </div>
             </div>
 
@@ -264,6 +401,30 @@ export default function HomePage() {
               days={calendarData.days}
               schoolYearName={calendarData.schoolYear.name}
               classId={selectedClassId}
+            />
+          </div>
+        )}
+
+        {showAggregatedCalendar && aggregatedData && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Alle Klassen — Gesamtübersicht
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Schuljahr {aggregatedData.schoolYear.name}
+                </p>
+              </div>
+              <div className="sm:ml-auto">
+                <CalendarLegend variant="aggregated" />
+              </div>
+            </div>
+
+            <AggregatedCalendar
+              days={aggregatedData.days}
+              schoolYearName={aggregatedData.schoolYear.name}
+              onDaySelect={setSelectedAggregatedDay}
             />
           </div>
         )}
@@ -276,6 +437,14 @@ export default function HomePage() {
           abu={iaVariants.abu}
           onPick={handleIAVariantPick}
           onCancel={() => setIaDialogClass(null)}
+        />
+      )}
+
+      {selectedAggregatedDay && aggregatedData && (
+        <DayDetailsDialog
+          day={selectedAggregatedDay}
+          schoolYearShort={schoolYearShort(aggregatedData.schoolYear)}
+          onClose={() => setSelectedAggregatedDay(null)}
         />
       )}
     </div>

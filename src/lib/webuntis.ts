@@ -44,6 +44,31 @@ export async function resolveSchoolyearId(
 }
 
 /**
+ * Run async tasks with a max concurrency limit, preserving input order.
+ * Used to avoid overwhelming the WebUntis API with hundreds of parallel calls.
+ */
+export async function mapWithConcurrency<TIn, TOut>(
+  items: ReadonlyArray<TIn>,
+  limit: number,
+  worker: (item: TIn, index: number) => Promise<TOut>,
+): Promise<TOut[]> {
+  const results: TOut[] = new Array(items.length);
+  let cursor = 0;
+
+  async function runOne(): Promise<void> {
+    while (true) {
+      const idx = cursor++;
+      if (idx >= items.length) return;
+      results[idx] = await worker(items[idx], idx);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, items.length) }, () => runOne());
+  await Promise.all(workers);
+  return results;
+}
+
+/**
  * Creates a WebUntis client, logs in, runs `fn`, then logs out.
  * Guarantees logout even on error — callers only write the domain logic.
  */

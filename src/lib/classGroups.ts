@@ -41,7 +41,7 @@ export const COMPANION_RULES: CompanionRule[] = [
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Strip whitespace and lowercase — used for both matching and lookup */
-function normalize(name: string): string {
+export function normalize(name: string): string {
   return name.replace(/\s+/g, '').toLowerCase();
 }
 
