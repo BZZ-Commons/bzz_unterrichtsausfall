@@ -34,6 +34,9 @@ yarn-error.log*
 # Keep .env.example
 !.env.example
 
+# Local-only notes (deployment runbook etc.)
+*.local.md
+
 # vercel
 .vercel
 
