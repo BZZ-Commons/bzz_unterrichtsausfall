@@ -9,7 +9,7 @@ interface LegendItem {
 
 const SINGLE_ITEMS: LegendItem[] = [
   { cellClass: DAY_STYLES.normal.cell,       label: 'Normaler Schultag' },
-  { cellClass: DAY_STYLES.schulausfall.cell, label: 'Schulausfall / Veranstaltung' },
+  { cellClass: DAY_STYLES.schulausfall.cell, label: 'Schulausfall' },
   { cellClass: DAY_STYLES.ferien.cell,       label: 'Schulferien' },
 ];
 
