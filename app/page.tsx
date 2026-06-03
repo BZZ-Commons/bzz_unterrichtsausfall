@@ -40,19 +40,10 @@ function pickDefaultSchoolYearId(years: SchoolYearSummary[]): number | null {
   return current?.id ?? years[0]?.id ?? null;
 }
 
-/** Read the optional `?class=<name>` query param from the browser URL. */
-function readClassParam(): string | null {
+function readUrlParam(key: string): string | null {
   if (typeof window === 'undefined') return null;
-  const params = new URLSearchParams(window.location.search);
-  const value = params.get('class')?.trim();
+  const value = new URLSearchParams(window.location.search).get(key)?.trim();
   return value && value.length > 0 ? value : null;
-}
-
-/** Read the optional `?schoolyear=<YY>` query param (e.g. '25' for 2025/26). */
-function readSchoolYearShortParam(): string | null {
-  if (typeof window === 'undefined') return null;
-  const raw = new URLSearchParams(window.location.search).get('schoolyear')?.trim();
-  return raw && raw.length > 0 ? raw : null;
 }
 
 export default function HomePage() {
@@ -80,6 +71,7 @@ export default function HomePage() {
 
   // Deep-link from popup → preselect class on next single-mode load
   const pendingClassNameRef = useRef<string | null>(null);
+  const pendingCompanionNameRef = useRef<string | null>(null);
 
   // Single in-flight controller per concern — switching mid-fetch aborts the previous request.
   const classesAbortRef = useRef<AbortController | null>(null);
@@ -103,8 +95,9 @@ export default function HomePage() {
 
   // StrictMode-safe bootstrap (single AbortController shared with deep-link).
   useEffect(() => {
-    pendingClassNameRef.current = readClassParam();
-    const urlYearShort = readSchoolYearShortParam();
+    pendingClassNameRef.current = readUrlParam('class');
+    pendingCompanionNameRef.current = readUrlParam('companion');
+    const urlYearShort = readUrlParam('schoolyear');
     const controller = new AbortController();
     classesAbortRef.current = controller;
     void (async () => {
@@ -222,18 +215,34 @@ export default function HomePage() {
     }
   }, [viewMode, aggregatedData, aggregatedLoading, loadAggregated]);
 
-  // Once classes are loaded, consume any pending `?class=` deep-link exactly once.
+  // Once classes are loaded, consume any pending `?class=` (+ `?companion=`) deep-link exactly once.
   useEffect(() => {
     const name = pendingClassNameRef.current;
     if (!name || classes.length === 0) return;
     const target = normalize(name);
     const match = classes.find((c) => normalize(c.name) === target);
     pendingClassNameRef.current = null;
-    if (match) {
-      setViewMode('single');
-      handleClassChange(match.id);
+    if (!match) {
+      pendingCompanionNameRef.current = null;
+      return;
     }
-  }, [classes, handleClassChange]);
+    setViewMode('single');
+    // If the URL also carried a companion, resolve it directly (skipping the IA dialog).
+    const unresolvedIA = isIAClass(match.name) && (match.fetchIds?.length ?? 0) < 2;
+    const companionName = pendingCompanionNameRef.current;
+    pendingCompanionNameRef.current = null;
+    if (unresolvedIA && companionName) {
+      const companionTarget = normalize(companionName);
+      const companion = classes.find((c) => normalize(c.name) === companionTarget);
+      if (companion) {
+        const fetchIds = [match.id, companion.id];
+        setSelectedFetchIds(fetchIds);
+        void loadCalendar(fetchIds);
+        return;
+      }
+    }
+    handleClassChange(match.id);
+  }, [classes, handleClassChange, loadCalendar]);
 
   const selectedClassId = selectedFetchIds?.[0] ?? null;
   const selectedClass = selectedClassId != null
@@ -246,6 +255,12 @@ export default function HomePage() {
     return year ? schoolYearShort(year) : null;
   }, [schoolYears, selectedSchoolYearId]);
 
+  // Only surface a companion in the header for single-companion merges (length 2).
+  // Multi-companion classes (e.g. AB c → IA a+b) fall back to longName.
+  const selectedCompanion = selectedFetchIds?.length === 2
+    ? classes.find((c) => c.id === selectedFetchIds[1])
+    : null;
+
   // Sync URL with current state so it stays shareable / copy-pasteable.
   // Skip while a deep-link is still pending to avoid briefly dropping `?class=`.
   const selectedClassName = selectedClass?.name ?? null;
@@ -256,17 +271,15 @@ export default function HomePage() {
     params.set('schoolyear', selectedSchoolYearShort);
     if (viewMode === 'single' && selectedClassName) {
       params.set('class', selectedClassName);
+      if (selectedCompanion?.name) {
+        params.set('companion', selectedCompanion.name);
+      }
     }
     const next = `${window.location.pathname}?${params.toString()}`;
     if (next !== window.location.pathname + window.location.search) {
       window.history.replaceState(null, '', next);
     }
-  }, [selectedSchoolYearShort, selectedClassName, viewMode]);
-  // Only surface a companion in the header for single-companion merges (length 2).
-  // Multi-companion classes (e.g. AB c → IA a+b) fall back to longName.
-  const selectedCompanion = selectedFetchIds?.length === 2
-    ? classes.find((c) => c.id === selectedFetchIds[1])
-    : null;
+  }, [selectedSchoolYearShort, selectedClassName, selectedCompanion?.name, viewMode]);
   const subtitle = selectedCompanion ? `+ ${selectedCompanion.name}` : selectedClass?.longName;
 
   const iaVariants = useMemo(
