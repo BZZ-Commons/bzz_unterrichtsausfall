@@ -213,6 +213,17 @@ describe('determineSchoolDays', () => {
     expect(result).toEqual(new Set([1, 2, 3, 4])); // no Friday (5)
   });
 
+  it('ignores weekend lessons when determining school days (isoDay > 5 branch)', () => {
+    // Aug 23 2025 = Saturday (ISO day 6) — must not add 6 to the schoolDays set
+    const lessons: UntisLesson[] = [
+      makeLesson(20250818), // Monday → ISO day 1
+      makeLesson(20250823), // Saturday → ISO day 6, filtered by isoDay <= 5 check
+    ];
+    const result = determineSchoolDays(lessons);
+    expect(result.has(6)).toBe(false);
+    expect(result.has(1)).toBe(true);
+  });
+
   it('only uses first 4 weeks, ignores later data for school day detection', () => {
     // First 4 weeks: only Mon–Thu; week 5+: Fri also appears
     const lessons: UntisLesson[] = [
@@ -309,6 +320,20 @@ describe('classifyDays — Veranstaltung (irregular event with no subject)', () 
     const days = classifyDays(SCHOOL_YEAR, [], lessons);
     expect(days[0].type).toBe('veranstaltung');
     expect(days[0].eventName).toBe('Sporttag');
+  });
+
+  it('treats irregular lesson with su undefined (absent) as event period (covers ?? 0 fallback)', () => {
+    // su is omitted → su?.length is undefined → ?? 0 fires → isEventPeriod returns true
+    const eventNoSu: UntisLesson = {
+      id: lessonIdCounter++,
+      date: 20250818,
+      code: 'irregular',
+      lstext: 'Studientag',
+      // su intentionally absent
+    };
+    const days = classifyDays(SCHOOL_YEAR, [], [makeLesson(20250818, 'cancelled'), eventNoSu]);
+    expect(days[0].type).toBe('veranstaltung');
+    expect(days[0].eventName).toBe('Studientag');
   });
 
   it('does NOT treat an irregular period that still has a subject as an event (substitution still teaches → normal)', () => {

@@ -129,4 +129,37 @@ describe('aggregateClassDays', () => {
     ]);
     expect(result[0].holidayName).toBe('Sportferien');
   });
+
+  it('marks ferien without holidayName when no entry has one', () => {
+    const result = aggregateClassDays([
+      makeClass('A', 1, [{ date: D1, type: 'ferien' }]),
+      makeClass('B', 2, [{ date: D1, type: 'ferien' }]),
+    ]);
+    expect(result[0].type).toBe('ferien');
+    expect(result[0].holidayName).toBeUndefined();
+  });
+
+  it('marks day as out-of-year when all classes are out-of-year', () => {
+    const result = aggregateClassDays([
+      makeClass('A', 1, [{ date: D1, type: 'out-of-year' }]),
+      makeClass('B', 2, [{ date: D1, type: 'out-of-year' }]),
+    ]);
+    expect(result).toEqual([{ date: D1, type: 'out-of-year' }]);
+  });
+
+  it('marks day as no-school (not out-of-year) when classes are mixed out-of-year and no-lessons', () => {
+    const result = aggregateClassDays([
+      makeClass('A', 1, [{ date: D1, type: 'out-of-year' }]),
+      makeClass('B', 2, [{ date: D1, type: 'no-lessons' }]),
+    ]);
+    expect(result).toEqual([{ date: D1, type: 'no-school' }]);
+  });
+
+  it('marks day as normal when any class has veranstaltung', () => {
+    const result = aggregateClassDays([
+      makeClass('A', 1, [{ date: D1, type: 'veranstaltung' }]),
+      makeClass('B', 2, [{ date: D1, type: 'no-lessons' }]),
+    ]);
+    expect(result).toEqual([{ date: D1, type: 'normal' }]);
+  });
 });
