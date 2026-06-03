@@ -20,7 +20,7 @@ export interface PerClassClassification {
  *  1. Any class marks the day as `ferien` → `ferien` (with holidayName)
  *  2. All classes mark the day as `weekend` → `weekend`
  *  3. Any class has Schulausfall with `cancelledCount > 0` → `irregular`,
- *     `affectedClasses` lists those classes. Classes with `schulausfall` but
+ *     `affectedClasses` lists those classes. Classes with `unterrichtsausfall` but
  *     zero recorded cancellations are ignored — that pattern usually means the
  *     class just doesn't meet on that weekday rather than a real cancellation.
  *  4. Any class marks the day as `normal` → `normal`
@@ -79,7 +79,7 @@ function classifyAggregatedDay(
   // Classes that simply have no lessons scheduled for the day (cancelledCount=0)
   // are not real "irregularities" — they usually just don't meet that weekday.
   const affected = entries.filter(
-    (e) => e.day.type === 'schulausfall' && (e.day.cancelledCount ?? 0) > 0,
+    (e) => e.day.type === 'unterrichtsausfall' && (e.day.cancelledCount ?? 0) > 0,
   );
   if (affected.length > 0) {
     const affectedClasses: ClassDayStatus[] = affected.map(({ source, day }) => ({
@@ -95,8 +95,8 @@ function classifyAggregatedDay(
     return result;
   }
 
-  // 4. Normal — at least one class has normal lessons
-  if (entries.some((e) => e.day.type === 'normal')) {
+  // 4. Normal — at least one class has normal lessons or a Veranstaltung
+  if (entries.some((e) => e.day.type === 'normal' || e.day.type === 'veranstaltung')) {
     return { date, type: 'normal' };
   }
 

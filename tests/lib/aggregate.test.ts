@@ -30,19 +30,19 @@ describe('aggregateClassDays', () => {
   it('marks day as irregular when a class has real cancellations (cancelledCount > 0)', () => {
     const result = aggregateClassDays([
       makeClass('A', 1, [{ date: D1, type: 'normal', lessonCount: 4 }]),
-      makeClass('B', 2, [{ date: D1, type: 'schulausfall', lessonCount: 0, cancelledCount: 3 }]),
+      makeClass('B', 2, [{ date: D1, type: 'unterrichtsausfall', lessonCount: 0, cancelledCount: 3 }]),
     ]);
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe('irregular');
     expect(result[0].affectedClasses).toEqual([
-      { className: 'B', classId: 2, type: 'schulausfall', lessonCount: 0, cancelledCount: 3 },
+      { className: 'B', classId: 2, type: 'unterrichtsausfall', lessonCount: 0, cancelledCount: 3 },
     ]);
   });
 
-  it('ignores schulausfall entries with zero cancellations (class just does not meet that day)', () => {
+  it('ignores unterrichtsausfall entries with zero cancellations (class just does not meet that day)', () => {
     const result = aggregateClassDays([
       makeClass('A', 1, [{ date: D1, type: 'normal', lessonCount: 4 }]),
-      makeClass('B', 2, [{ date: D1, type: 'schulausfall', lessonCount: 0, cancelledCount: 0 }]),
+      makeClass('B', 2, [{ date: D1, type: 'unterrichtsausfall', lessonCount: 0, cancelledCount: 0 }]),
     ]);
     // B contributes no real irregularity → day is just "normal"
     expect(result[0].type).toBe('normal');
@@ -84,7 +84,7 @@ describe('aggregateClassDays', () => {
   it('does not include normal-day classes in affectedClasses', () => {
     const result = aggregateClassDays([
       makeClass('A', 1, [{ date: D1, type: 'normal', lessonCount: 4 }]),
-      makeClass('B', 2, [{ date: D1, type: 'schulausfall', lessonCount: 0, cancelledCount: 2 }]),
+      makeClass('B', 2, [{ date: D1, type: 'unterrichtsausfall', lessonCount: 0, cancelledCount: 2 }]),
     ]);
     const affected = result[0].affectedClasses ?? [];
     expect(affected.map((c) => c.className)).toEqual(['B']);
@@ -93,8 +93,8 @@ describe('aggregateClassDays', () => {
   it('lists multiple real cancellations in affectedClasses', () => {
     const result = aggregateClassDays([
       makeClass('A', 1, [{ date: D1, type: 'normal', lessonCount: 4 }]),
-      makeClass('B', 2, [{ date: D1, type: 'schulausfall', lessonCount: 0, cancelledCount: 3 }]),
-      makeClass('C', 3, [{ date: D1, type: 'schulausfall', lessonCount: 0, cancelledCount: 1 }]),
+      makeClass('B', 2, [{ date: D1, type: 'unterrichtsausfall', lessonCount: 0, cancelledCount: 3 }]),
+      makeClass('C', 3, [{ date: D1, type: 'unterrichtsausfall', lessonCount: 0, cancelledCount: 1 }]),
     ]);
     expect(result[0].type).toBe('irregular');
     expect((result[0].affectedClasses ?? []).map((c) => c.className)).toEqual(['B', 'C']);
@@ -104,7 +104,7 @@ describe('aggregateClassDays', () => {
     const result = aggregateClassDays([
       makeClass('A', 1, [
         { date: D1, type: 'normal', lessonCount: 4 },
-        { date: D2, type: 'schulausfall', lessonCount: 0, cancelledCount: 4 },
+        { date: D2, type: 'unterrichtsausfall', lessonCount: 0, cancelledCount: 4 },
         { date: D3, type: 'ferien', holidayName: 'Herbstferien' },
       ]),
       makeClass('B', 2, [

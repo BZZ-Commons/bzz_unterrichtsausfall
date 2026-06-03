@@ -53,6 +53,10 @@ function isEventPeriod(lesson: UntisLesson): boolean {
   return lesson.code === 'irregular' && (lesson.su?.length ?? 0) === 0;
 }
 
+function getEventText(event: UntisLesson): string | undefined {
+  return event.lstext || event.substText || undefined;
+}
+
 /**
  * Build a human-readable tooltip for a calendar day.
  * Returns undefined when there's nothing meaningful to say (e.g. weekend, no-lessons).
@@ -108,11 +112,14 @@ function buildLessonMap(lessons: UntisLesson[]): Map<number, UntisLesson[]> {
  * Fallback: if no lessons at all, treat all weekdays as school days.
  */
 export function determineSchoolDays(lessons: UntisLesson[]): Set<number> {
-  if (lessons.length === 0) return new Set([1, 2, 3, 4, 5]);
+  // Event periods ("Veranstaltung") don't represent regular scheduled school —
+  // only real lessons (including cancelled ones) establish which days are school days.
+  const realLessons = lessons.filter((l) => !isEventPeriod(l));
+  if (realLessons.length === 0) return new Set([1, 2, 3, 4, 5]);
 
   // Group by unique ISO week key (YYYY_WW)
   const weekMap = new Map<number, UntisLesson[]>();
-  for (const lesson of lessons) {
+  for (const lesson of realLessons) {
     const date = parseUntisDate(lesson.date);
     const key = getWeekKey(date);
     const bucket = weekMap.get(key) ?? [];
@@ -144,7 +151,7 @@ export function determineSchoolDays(lessons: UntisLesson[]): Set<number> {
  *  - 'ferien'       inside a school vacation period
  *  - 'feiertag'     inside a public holiday
  *  - 'normal'      lessons present, at least one not cancelled
- *  - 'schulausfall' defined school day (has lessons in first 4 weeks) but no effective lessons
+ *  - 'unterrichtsausfall' defined school day (has lessons in first 4 weeks) but no effective lessons
  *                   (no lessons scheduled, OR every lesson is cancelled)
  *  - 'no-lessons'  weekday that is not a school day for this class
  *
@@ -207,14 +214,28 @@ export function classifyDays(
         if (lessonCount > 0) {
           type = 'normal';
         } else if (dayLessons.length > 0) {
-          // Only cancelled lessons and/or special events → Schulausfall.
-          // Surface the event name as the reason when a Veranstaltung is present.
-          type = 'schulausfall';
+          // Only cancelled lessons and/or special events remain.
+          // If the only event is an "Unterrichtsausfall" Veranstaltung on a day the
+          // class doesn't normally have school, don't color it — there's nothing to cancel.
           const event = dayLessons.find(isEventPeriod);
-          if (event) eventName = event.lstext || event.substText || undefined;
+          const isUnterrichtsausfall =
+            event != null &&
+            ((event.lstext ?? '').startsWith('Unterrichtsausfall') ||
+              (event.substText ?? '').startsWith('Unterrichtsausfall'));
+
+          if (isUnterrichtsausfall && !schoolDays.has(isoDay)) {
+            type = 'no-lessons';
+          } else if (event && !isUnterrichtsausfall) {
+            // Veranstaltung without "Unterrichtsausfall" prefix → green event day
+            type = 'veranstaltung';
+            eventName = getEventText(event);
+          } else {
+            type = 'unterrichtsausfall';
+            if (event) eventName = getEventText(event);
+          }
         } else {
           // No lessons at all — is this a defined school day for this class?
-          type = schoolDays.has(isoDay) ? 'schulausfall' : 'no-lessons';
+          type = schoolDays.has(isoDay) ? 'unterrichtsausfall' : 'no-lessons';
         }
       }
     }

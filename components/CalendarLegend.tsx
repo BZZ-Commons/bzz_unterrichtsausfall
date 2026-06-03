@@ -8,9 +8,10 @@ interface LegendItem {
 }
 
 const SINGLE_ITEMS: LegendItem[] = [
-  { cellClass: DAY_STYLES.normal.cell,       label: 'Normaler Schultag' },
-  { cellClass: DAY_STYLES.schulausfall.cell, label: 'Schulausfall' },
-  { cellClass: DAY_STYLES.ferien.cell,       label: 'Schulferien' },
+  { cellClass: DAY_STYLES.normal.cell,        label: 'Normaler Schultag' },
+  { cellClass: DAY_STYLES.veranstaltung.cell, label: 'Veranstaltung' },
+  { cellClass: DAY_STYLES.unterrichtsausfall.cell, label: 'Unterrichtsausfall' },
+  { cellClass: DAY_STYLES.ferien.cell,        label: 'Schulferien' },
 ];
 
 const AGGREGATED_ITEMS: LegendItem[] = [

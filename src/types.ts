@@ -1,8 +1,9 @@
 export type DayType =
-  | 'ferien'        // school vacation period (Schulferien)
-  | 'normal'        // school day with at least one non-cancelled lesson
-  | 'schulausfall'  // no effective lessons: day cancelled, all lessons cancelled, or public holiday
-  | 'no-lessons'    // weekday that is simply not a school day for this class
+  | 'ferien'          // school vacation period (Schulferien)
+  | 'normal'          // school day with at least one non-cancelled lesson
+  | 'unterrichtsausfall' // no effective lessons: day cancelled, all lessons cancelled, or "Unterrichtsausfall" event
+  | 'veranstaltung'   // special school event (Veranstaltung) without "Unterrichtsausfall" prefix
+  | 'no-lessons'      // weekday that is simply not a school day for this class
   | 'weekend'
   | 'out-of-year';
 
@@ -83,7 +84,7 @@ export interface CalendarData {
 
 export type AggregatedDayType =
   | 'normal'      // every class with school has a normal day
-  | 'irregular'   // at least one class has Schulausfall (cancelled / no effective lessons)
+  | 'irregular'   // at least one class has Unterrichtsausfall (cancelled / no effective lessons)
   | 'ferien'      // global school vacation
   | 'weekend'
   | 'no-school'   // weekday outside the school calendar for everyone
@@ -102,7 +103,7 @@ export interface AggregatedDay {
   date: string;              // 'YYYY-MM-DD'
   type: AggregatedDayType;
   holidayName?: string;
-  /** Populated only when `type === 'irregular'` — classes with Schulausfall on this day. */
+  /** Populated only when `type === 'irregular'` — classes with Unterrichtsausfall on this day. */
   affectedClasses?: ClassDayStatus[];
 }
 

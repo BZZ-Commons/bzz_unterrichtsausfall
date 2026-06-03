@@ -39,22 +39,22 @@ describe('classifyDays', () => {
     expect(days[0].lessonCount).toBe(1);
   });
 
-  it('marks weekdays with no lessons as "schulausfall" when no timetable data (fallback: all weekdays are school days)', () => {
+  it('marks weekdays with no lessons as "unterrichtsausfall" when no timetable data (fallback: all weekdays are school days)', () => {
     // Empty lessons → determineSchoolDays fallback treats every weekday as a school day
     const days = classifyDays(SCHOOL_YEAR, [], []);
     for (const day of days) {
-      expect(day.type).toBe('schulausfall');
+      expect(day.type).toBe('unterrichtsausfall');
     }
   });
 
-  it('marks days where all lessons are cancelled as "schulausfall" (0 effective, N cancelled)', () => {
+  it('marks days where all lessons are cancelled as "unterrichtsausfall" (0 effective, N cancelled)', () => {
     const lessons = [
       makeLesson(20250818, 'cancelled'),
       makeLesson(20250818, 'cancelled'),
     ];
     const days = classifyDays(SCHOOL_YEAR, [], lessons);
     const mon = days.find((d) => d.date === '2025-08-18');
-    expect(mon?.type).toBe('schulausfall');
+    expect(mon?.type).toBe('unterrichtsausfall');
     expect(mon?.lessonCount).toBe(0);
     expect(mon?.cancelledCount).toBe(2);
   });
@@ -227,9 +227,9 @@ describe('determineSchoolDays', () => {
   });
 });
 
-// ─── schulausfall classification ──────────────────────────────────────────────
+// ─── unterrichtsausfall classification ──────────────────────────────────────────────
 
-describe('schulausfall classification', () => {
+describe('unterrichtsausfall classification', () => {
   // 5-week school year to have enough data for school day detection
   const LONG_SCHOOL_YEAR: UntisSchoolYear = {
     id: 1,
@@ -238,7 +238,7 @@ describe('schulausfall classification', () => {
     endDate: new Date(2025, 8, 19),   // Fri Sep 19 (5 weeks)
   };
 
-  it('marks a defined school day with no lessons as "schulausfall"', () => {
+  it('marks a defined school day with no lessons as "unterrichtsausfall"', () => {
     // Lessons on Mon–Thu in first 4 weeks, then week 5 Mon is empty
     const lessons: UntisLesson[] = [
       20250818, 20250819, 20250820, 20250821,
@@ -251,7 +251,7 @@ describe('schulausfall classification', () => {
 
     const days = classifyDays(LONG_SCHOOL_YEAR, [], lessons);
     const mon5 = days.find((d) => d.date === '2025-09-15'); // Mon week 5
-    expect(mon5?.type).toBe('schulausfall');
+    expect(mon5?.type).toBe('unterrichtsausfall');
   });
 
   it('marks a non-school weekday (no lessons in first 4 weeks) as "no-lessons"', () => {
@@ -264,7 +264,7 @@ describe('schulausfall classification', () => {
     ].map((d) => makeLesson(d));
 
     const days = classifyDays(LONG_SCHOOL_YEAR, [], lessons);
-    // Every Friday should be 'no-lessons', not 'schulausfall'
+    // Every Friday should be 'no-lessons', not 'unterrichtsausfall'
     const fridays = days.filter((d) => {
       const dow = new Date(d.date).getDay();
       return dow === 5; // JS getDay: 5 = Friday
@@ -287,7 +287,7 @@ describe('classifyDays — Veranstaltung (irregular event with no subject)', () 
     substText,
   });
 
-  it('treats a day of cancelled lessons + 1 empty-subject irregular event as schulausfall with the event name', () => {
+  it('treats a day of cancelled lessons + 1 empty-subject irregular event as veranstaltung with the event name', () => {
     // Mirrors AB24 a on 2027-07-13: 9 cancelled lessons + 1 irregular event period.
     const lessons: UntisLesson[] = [
       ...Array.from({ length: 9 }, () => makeLesson(20250818, 'cancelled')),
@@ -295,7 +295,7 @@ describe('classifyDays — Veranstaltung (irregular event with no subject)', () 
     ];
     const days = classifyDays(SCHOOL_YEAR, [], lessons);
     const mon = days.find((d) => d.date === '2025-08-18');
-    expect(mon?.type).toBe('schulausfall');
+    expect(mon?.type).toBe('veranstaltung');
     expect(mon?.eventName).toBe('Lehrpersonenweiterbildung Abteilung Wirtschaft');
     expect(mon?.lessonCount).toBe(0);
     expect(mon?.cancelledCount).toBe(9);
@@ -307,7 +307,7 @@ describe('classifyDays — Veranstaltung (irregular event with no subject)', () 
       makeEvent(20250818, undefined, 'Sporttag'),
     ];
     const days = classifyDays(SCHOOL_YEAR, [], lessons);
-    expect(days[0].type).toBe('schulausfall');
+    expect(days[0].type).toBe('veranstaltung');
     expect(days[0].eventName).toBe('Sporttag');
   });
 
@@ -328,8 +328,43 @@ describe('classifyDays — Veranstaltung (irregular event with no subject)', () 
   it('does not set eventName on an ordinary all-cancelled day (regression)', () => {
     const lessons = Array.from({ length: 5 }, () => makeLesson(20250818, 'cancelled'));
     const days = classifyDays(SCHOOL_YEAR, [], lessons);
-    expect(days[0].type).toBe('schulausfall');
+    expect(days[0].type).toBe('unterrichtsausfall');
     expect(days[0].eventName).toBeUndefined();
+  });
+
+  it('classifies "Unterrichtsausfall" Veranstaltung on a non-school day as no-lessons', () => {
+    // Monday has real lessons → school day. Tuesday–Friday have only an
+    // "Unterrichtsausfall" event → not a school day for this class, so no color.
+    const lessons: UntisLesson[] = [
+      makeLesson(20250818), // Monday: real lesson → school day
+      makeEvent(20250819, 'Unterrichtsausfall BM2'),  // Tuesday: not a school day
+      makeEvent(20250822, 'Unterrichtsausfall Abt. W'), // Friday: not a school day
+    ];
+    const days = classifyDays(SCHOOL_YEAR, [], lessons);
+    const tue = days.find((d) => d.date === '2025-08-19');
+    const fri = days.find((d) => d.date === '2025-08-22');
+    expect(tue?.type).toBe('no-lessons');
+    expect(fri?.type).toBe('no-lessons');
+  });
+
+  it('classifies "Unterrichtsausfall" Veranstaltung on a school day as unterrichtsausfall', () => {
+    // Both Monday and Tuesday are school days (each has a real lesson in week 1).
+    // On a later Monday there's only an "Unterrichtsausfall" event → unterrichtsausfall.
+    const multiWeekYear: UntisSchoolYear = {
+      id: 1,
+      name: '2025/2026',
+      startDate: new Date(2025, 7, 18),  // Aug 18 (Mon)
+      endDate: new Date(2025, 7, 25),    // Aug 25 (Mon, second week)
+    };
+    const lessons: UntisLesson[] = [
+      makeLesson(20250818), // Mon wk1 → school day
+      makeLesson(20250819), // Tue wk1 → school day
+      makeEvent(20250825, 'Unterrichtsausfall Weiterbildung'), // Mon wk2 → unterrichtsausfall
+    ];
+    const days = classifyDays(multiWeekYear, [], lessons);
+    const mon2 = days.find((d) => d.date === '2025-08-25');
+    expect(mon2?.type).toBe('unterrichtsausfall');
+    expect(mon2?.eventName).toBe('Unterrichtsausfall Weiterbildung');
   });
 });
 
@@ -390,19 +425,19 @@ describe('classifyDays — lessonCount', () => {
     expect(days[0].type).toBe('normal');
   });
 
-  it('all-cancelled day: lessonCount = 0, cancelledCount = N, type → schulausfall', () => {
+  it('all-cancelled day: lessonCount = 0, cancelledCount = N, type → unterrichtsausfall', () => {
     const lessons = Array.from({ length: 5 }, () => makeLesson(20250818, 'cancelled'));
     const days = classifyDays(SCHOOL_YEAR, [], lessons);
     expect(days[0].lessonCount).toBe(0);
     expect(days[0].cancelledCount).toBe(5);
-    expect(days[0].type).toBe('schulausfall');
+    expect(days[0].type).toBe('unterrichtsausfall');
   });
 
   it('lessonCount is 0 and cancelledCount undefined on a Schulausfall day with no lessons at all', () => {
     const days = classifyDays(SCHOOL_YEAR, [], []);
     expect(days[0].lessonCount).toBe(0);
     expect(days[0].cancelledCount).toBeUndefined();
-    expect(days[0].type).toBe('schulausfall'); // empty lessons → fallback school days
+    expect(days[0].type).toBe('unterrichtsausfall'); // empty lessons → fallback school days
   });
 
   it('lessonCount is undefined for weekend days', () => {
@@ -508,17 +543,17 @@ describe('buildDayTooltip', () => {
   });
 
   it('shows only cancelled when no effective lessons (Schulausfall mit Lektionen)', () => {
-    expect(buildDayTooltip({ ...baseDay, type: 'schulausfall', lessonCount: 0, cancelledCount: 9 })).toBe('9 abgesagt');
+    expect(buildDayTooltip({ ...baseDay, type: 'unterrichtsausfall', lessonCount: 0, cancelledCount: 9 })).toBe('9 abgesagt');
   });
 
   it('shows the event name then cancelled count for a Veranstaltung day', () => {
     expect(
-      buildDayTooltip({ ...baseDay, type: 'schulausfall', eventName: 'Lehrpersonenweiterbildung Abteilung Wirtschaft', lessonCount: 0, cancelledCount: 9 }),
+      buildDayTooltip({ ...baseDay, type: 'unterrichtsausfall', eventName: 'Lehrpersonenweiterbildung Abteilung Wirtschaft', lessonCount: 0, cancelledCount: 9 }),
     ).toBe('Lehrpersonenweiterbildung Abteilung Wirtschaft, 9 abgesagt');
   });
 
   it('returns undefined when there is nothing to show (e.g. empty Schulausfall)', () => {
-    expect(buildDayTooltip({ ...baseDay, type: 'schulausfall', lessonCount: 0 })).toBeUndefined();
+    expect(buildDayTooltip({ ...baseDay, type: 'unterrichtsausfall', lessonCount: 0 })).toBeUndefined();
   });
 
   it('returns undefined for a bare weekend/no-lessons day with no counts', () => {
