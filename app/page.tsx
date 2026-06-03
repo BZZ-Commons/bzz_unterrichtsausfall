@@ -308,7 +308,7 @@ export default function HomePage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-slate-900 leading-tight">
-                Schulausfälle
+                Unterrichtsausfälle
               </h1>
               <p className="text-xs text-slate-500">BZZ Bildungszentrum Zürichsee</p>
             </div>
