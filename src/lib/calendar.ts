@@ -54,7 +54,7 @@ function isEventPeriod(lesson: UntisLesson): boolean {
 }
 
 function getEventText(event: UntisLesson): string | undefined {
-  return event.lstext || event.substText || undefined;
+  return event.lstext || event.substText;
 }
 
 /**
@@ -147,13 +147,12 @@ export function determineSchoolDays(lessons: UntisLesson[]): Set<number> {
  * Pure function: classify every calendar day of the school year.
  *
  * Day types:
- *  - 'weekend'      Sat / Sun
- *  - 'ferien'       inside a school vacation period
- *  - 'feiertag'     inside a public holiday
- *  - 'normal'      lessons present, at least one not cancelled
- *  - 'unterrichtsausfall' defined school day (has lessons in first 4 weeks) but no effective lessons
- *                   (no lessons scheduled, OR every lesson is cancelled)
- *  - 'no-lessons'  weekday that is not a school day for this class
+ *  - 'weekend'             Sat / Sun
+ *  - 'ferien'              inside a school vacation period
+ *  - 'normal'              lessons present, at least one not cancelled
+ *  - 'unterrichtsausfall'  school day but no effective lessons (all cancelled or "Unterrichtsausfall" event)
+ *  - 'veranstaltung'       Veranstaltung event without "Unterrichtsausfall" prefix
+ *  - 'no-lessons'          weekday that is not a school day for this class
  *
  * @param schoolYear  School year with JS Date start/end
  * @param holidays    Raw WebUntis holidays array
