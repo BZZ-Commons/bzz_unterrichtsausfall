@@ -13,8 +13,9 @@ import type {
 } from '@/src/types';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 120; // seconds — allow up to 2 min for full-school fetch
 
-// This fetch takes ~60s — 1 hour TTL is appropriate
+// This fetch takes ~30s (4 concurrent) — 1 hour TTL is appropriate
 const TTL = 60 * 60 * 1000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -90,11 +91,11 @@ export async function GET(request: Request): Promise<NextResponse> {
       const uniqueIds = Array.from(uniqueClassIds);
 
       // WebUntis rate-limits aggressive concurrency (ECONNRESET / 429).
-      // 2 concurrent fetches with retry-on-429 keeps us safely under the limit.
-      // With ~150 classes this takes ~60s; the result is cached for 1 hour.
+      // 4 concurrent fetches with retry-on-429 keeps us safely under the limit.
+      // With ~150 classes this takes ~30s; the result is cached for 1 hour.
       const lessonsPerId = await mapWithConcurrency(
         uniqueIds,
-        2,
+        4,
         async (id): Promise<UntisLesson[]> => {
           return fetchTimetableWithRetry(untis, schoolYear, id);
         },

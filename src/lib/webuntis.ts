@@ -77,7 +77,7 @@ export async function withUntisClient<T>(fn: (untis: WebUntis) => Promise<T>): P
   await untis.login();
   try {
     const result = await fn(untis);
-    await untis.logout();
+    try { await untis.logout(); } catch { /* session may have expired during long fetch — ignore */ }
     return result;
   } catch (error) {
     try { await untis.logout(); } catch { /* ignore secondary logout error */ }
