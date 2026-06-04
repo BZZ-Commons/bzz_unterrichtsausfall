@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { withUntisClient, resolveSchoolyear } from '@/src/lib/webuntis';
 import { classifyDays, deduplicateLessons } from '@/src/lib/calendar';
+import { getCached, setCached, clearAllCaches } from '@/src/lib/cache';
 import type { CalendarData, UntisHoliday, UntisLesson, UntisSchoolYear } from '@/src/types';
 
-// Cache for 1 hour — timetable data doesn't change every minute
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
+
+const TTL = 60 * 60 * 1000;
 
 export async function GET(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
@@ -25,6 +27,13 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   const yearId = yearIdParam ? parseInt(yearIdParam, 10) : null;
+
+  if (searchParams.get('clearCache') === 'true') clearAllCaches();
+
+  const sortedIds = [...allClassIds].sort((a, b) => a - b).join(',');
+  const cacheKey = `calendar:${sortedIds}:${yearId ?? 'current'}`;
+  const cached = getCached<CalendarData>(cacheKey);
+  if (cached) return NextResponse.json(cached);
 
   try {
     const result = await withUntisClient(async (untis) => {
@@ -63,6 +72,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       } satisfies CalendarData;
     });
 
+    setCached(cacheKey, result, TTL);
     return NextResponse.json(result);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to fetch calendar data';
