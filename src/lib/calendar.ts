@@ -230,7 +230,7 @@ export function classifyDays(
             eventName = getEventText(event);
           } else {
             type = 'unterrichtsausfall';
-            if (event) eventName = getEventText(event);
+            if (event) eventName = getEventText(event)?.replace(/^Unterrichtsausfall:\s*/i, '').trim() || undefined;
           }
         } else {
           // No lessons at all — is this a defined school day for this class?
