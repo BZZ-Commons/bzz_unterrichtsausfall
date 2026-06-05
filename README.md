@@ -115,34 +115,11 @@ src/
     calendar.ts               classifyDays() + Helpers (pur, getestet)
     classGroups.ts            Companion-Rules + IA-Variant-Auflösung
     webuntis.ts               withUntisClient() Wrapper, resolveSchoolyear()
-    cache.ts                  In-Memory-Cache (TTL-basiert, siehe unten)
     calendar-styles.ts        Tailwind-Klassen pro DayType
     calendar-layout.ts        buildMonthGroups() — Wochen/Monate für die Kalenderdarstellung
     exportExcel.ts            exportCalendarToExcel() — erzeugt .xlsx mit SheetJS
 tests/                        Vitest Unit-Tests
 ```
-
-## Cache (`src/lib/cache.ts`)
-
-Einfacher In-Memory-TTL-Cache für Server-seitige API-Antworten (verhindert
-wiederholte WebUntis-Logins bei schnellen Seitenladevorgängen).
-
-```ts
-getCached<T>(key: string): T | null
-```
-Gibt den gecachten Wert zurück, oder `null` wenn der Eintrag nicht existiert
-oder abgelaufen ist. Abgelaufene Einträge werden beim Lesen automatisch gelöscht.
-
-```ts
-setCached<T>(key: string, data: T, ttlMs: number): void
-```
-Speichert `data` unter `key` für `ttlMs` Millisekunden.
-
-```ts
-clearAllCaches(): void
-```
-Leert den gesamten Cache sofort — z. B. nach einem Schuljahrwechsel oder beim
-Testen, wenn frische Daten aus WebUntis erzwungen werden sollen.
 
 ## Excel-Export
 

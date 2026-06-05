@@ -4,7 +4,6 @@ import { withUntisClient, resolveSchoolyear, mapWithConcurrency } from '@/src/li
 import { classifyDays, deduplicateLessons } from '@/src/lib/calendar';
 import { aggregateClassDays, type PerClassClassification } from '@/src/lib/aggregate';
 import { listActiveClassesEnriched } from '@/src/lib/classes-server';
-import { getCached, setCached, clearAllCaches } from '@/src/lib/cache';
 import type {
   AggregatedCalendarData,
   UntisHoliday,
@@ -14,9 +13,6 @@ import type {
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120; // seconds — allow up to 2 min for full-school fetch
-
-// This fetch takes ~30s (4 concurrent) — 1 hour TTL is appropriate
-const TTL = 60 * 60 * 1000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -60,12 +56,6 @@ export async function GET(request: Request): Promise<NextResponse> {
   const yearIdParam = searchParams.get('schoolyearId');
   const yearId = yearIdParam ? parseInt(yearIdParam, 10) : null;
 
-  if (searchParams.get('clearCache') === 'true') clearAllCaches();
-
-  const cacheKey = `calendar-all:${yearId ?? 'current'}`;
-  const cached = getCached<AggregatedCalendarData>(cacheKey);
-  if (cached) return NextResponse.json(cached);
-
   try {
     const result = await withUntisClient(async (untis) => {
       const rawSchoolYear = await resolveSchoolyear(untis, yearId);
@@ -92,7 +82,6 @@ export async function GET(request: Request): Promise<NextResponse> {
 
       // WebUntis rate-limits aggressive concurrency (ECONNRESET / 429).
       // 4 concurrent fetches with retry-on-429 keeps us safely under the limit.
-      // With ~150 classes this takes ~30s; the result is cached for 1 hour.
       const lessonsPerId = await mapWithConcurrency(
         uniqueIds,
         4,
@@ -136,7 +125,6 @@ export async function GET(request: Request): Promise<NextResponse> {
       } satisfies AggregatedCalendarData;
     });
 
-    setCached(cacheKey, result, TTL);
     return NextResponse.json(result);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to fetch aggregated calendar';
