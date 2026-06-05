@@ -20,7 +20,7 @@ export function exportCalendarToExcel(
   schoolYearName: string,
 ): void {
   const rows = days
-    .filter((d) => d.type !== 'weekend' && d.type !== 'out-of-year')
+    .filter((d) => d.type !== 'weekend' && d.type !== 'out-of-year' && d.type !== 'no-lessons')
     .map((d) => {
       const date = parseISO(d.date);
       return {
