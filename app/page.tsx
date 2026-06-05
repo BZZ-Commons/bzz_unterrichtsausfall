@@ -145,15 +145,16 @@ export default function HomePage() {
     }
   }, [selectedSchoolYearId]);
 
-  const loadAggregated = useCallback(async () => {
-    if (selectedSchoolYearId == null) return;
+  const loadAggregated = useCallback(async (yearId?: number) => {
+    const yId = yearId ?? selectedSchoolYearId;
+    if (yId == null) return;
     aggregatedAbortRef.current?.abort();
     const controller = new AbortController();
     aggregatedAbortRef.current = controller;
     setAggregatedError(null);
     setAggregatedLoading(true);
     try {
-      const url = `/api/calendar-data-all?schoolyearId=${selectedSchoolYearId}`;
+      const url = `/api/calendar-data-all?schoolyearId=${yId}`;
       const data = await fetchJson<AggregatedCalendarData>(url, controller.signal);
       if (controller.signal.aborted) return;
       setAggregatedData(data);
@@ -181,7 +182,8 @@ export default function HomePage() {
     setIaDialogClass(null);
     setSelectedAggregatedDay(null);
     await loadClassesForYear(id, controller.signal);
-  }, [selectedSchoolYearId, loadClassesForYear]);
+    if (viewMode === 'all') void loadAggregated(id);
+  }, [selectedSchoolYearId, loadClassesForYear, viewMode, loadAggregated]);
 
   const handleClassChange = useCallback((id: number) => {
     const cls = classes.find((c) => c.id === id);
