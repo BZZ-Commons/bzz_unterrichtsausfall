@@ -72,6 +72,7 @@ export default function HomePage() {
   // Deep-link from popup → preselect class on next single-mode load
   const pendingClassNameRef = useRef<string | null>(null);
   const pendingCompanionNameRef = useRef<string | null>(null);
+  const pendingViewModeRef = useRef<string | null>(null);
 
   // Single in-flight controller per concern — switching mid-fetch aborts the previous request.
   const classesAbortRef = useRef<AbortController | null>(null);
@@ -97,6 +98,7 @@ export default function HomePage() {
   useEffect(() => {
     pendingClassNameRef.current = readUrlParam('class');
     pendingCompanionNameRef.current = readUrlParam('companion');
+    pendingViewModeRef.current = readUrlParam('view');
     const urlYearShort = readUrlParam('schoolyear');
     const controller = new AbortController();
     classesAbortRef.current = controller;
@@ -215,10 +217,22 @@ export default function HomePage() {
     }
   }, [viewMode, aggregatedData, aggregatedLoading, loadAggregated]);
 
-  // Once classes are loaded, consume any pending `?class=` (+ `?companion=`) deep-link exactly once.
+  // Once classes are loaded, consume any pending deep-link exactly once.
   useEffect(() => {
+    if (classes.length === 0) return;
+
+    // ?view=all takes precedence over ?class=
+    if (pendingViewModeRef.current === 'all') {
+      pendingViewModeRef.current = null;
+      pendingClassNameRef.current = null;
+      pendingCompanionNameRef.current = null;
+      setViewMode('all');
+      void loadAggregated();
+      return;
+    }
+
     const name = pendingClassNameRef.current;
-    if (!name || classes.length === 0) return;
+    if (!name) return;
     const target = normalize(name);
     const match = classes.find((c) => normalize(c.name) === target);
     pendingClassNameRef.current = null;
@@ -242,7 +256,7 @@ export default function HomePage() {
       }
     }
     handleClassChange(match.id);
-  }, [classes, handleClassChange, loadCalendar]);
+  }, [classes, handleClassChange, loadCalendar, loadAggregated]);
 
   const selectedClassId = selectedFetchIds?.[0] ?? null;
   const selectedClass = selectedClassId != null
@@ -269,7 +283,9 @@ export default function HomePage() {
     if (pendingClassNameRef.current != null) return;
     const params = new URLSearchParams();
     params.set('schoolyear', selectedSchoolYearShort);
-    if (viewMode === 'single' && selectedClassName) {
+    if (viewMode === 'all') {
+      params.set('view', 'all');
+    } else if (selectedClassName) {
       params.set('class', selectedClassName);
       if (selectedCompanion?.name) {
         params.set('companion', selectedCompanion.name);
