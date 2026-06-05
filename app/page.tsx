@@ -10,6 +10,7 @@ import IAVariantDialog from '@/components/IAVariantDialog';
 import ViewToggle, { type ViewMode } from '@/components/ViewToggle';
 import AggregatedCalendar from '@/components/AggregatedCalendar';
 import DayDetailsDialog from '@/components/DayDetailsDialog';
+import ExportButton from '@/components/ExportButton';
 import { isIAClass, getIAVariants, normalize } from '@/src/lib/classGroups';
 import { findSchoolYearByShort, schoolYearShort } from '@/src/lib/schoolYear';
 import type {
@@ -423,7 +424,12 @@ export default function HomePage() {
                   Schuljahr {calendarData.schoolYear.name}
                 </p>
               </div>
-              <div className="sm:ml-auto">
+              <div className="sm:ml-auto flex items-center gap-3">
+                <ExportButton
+                  days={calendarData.days}
+                  className={selectedClass?.name ?? ''}
+                  schoolYearName={calendarData.schoolYear.name}
+                />
                 <CalendarLegend variant="single" />
               </div>
             </div>
