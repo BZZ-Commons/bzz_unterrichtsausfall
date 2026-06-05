@@ -3,7 +3,7 @@
 import { memo, useMemo } from 'react';
 import { buildDayTooltip } from '@/src/lib/calendar';
 import { buildMonthGroups, DOW_LABELS } from '@/src/lib/calendar-layout';
-import { DAY_STYLES } from '@/src/lib/calendar-styles';
+import { DAY_STYLES, PARTIAL_CANCEL_STYLE } from '@/src/lib/calendar-styles';
 import type { CalendarDay } from '@/src/types';
 
 function untisWeekHref(monday: string, classId: number): string {
@@ -15,14 +15,16 @@ function untisWeekHref(monday: string, classId: number): string {
 interface DayCellProps {
   day: CalendarDay | null;
   href: string;
+  detailsMode?: boolean;
 }
 
-const DayCell = memo(function DayCell({ day, href }: DayCellProps) {
+const DayCell = memo(function DayCell({ day, href, detailsMode }: DayCellProps) {
   if (!day) {
     return <div className="h-9 w-full rounded-lg bg-white" />;
   }
 
-  const style = DAY_STYLES[day.type];
+  const isPartialCancel = detailsMode && day.type === 'normal' && (day.cancelledCount ?? 0) > 0;
+  const style = isPartialCancel ? PARTIAL_CANCEL_STYLE : DAY_STYLES[day.type];
   const dayNum = day.date.slice(8); // last 2 chars = day number
 
   const tooltip = buildDayTooltip(day);
@@ -62,9 +64,10 @@ interface SchoolYearCalendarProps {
   days: CalendarDay[];
   schoolYearName: string;
   classId: number;
+  detailsMode?: boolean;
 }
 
-export default function SchoolYearCalendar({ days, schoolYearName, classId }: SchoolYearCalendarProps) {
+export default function SchoolYearCalendar({ days, schoolYearName, classId, detailsMode }: SchoolYearCalendarProps) {
   const monthGroups = useMemo(() => buildMonthGroups(days), [days]);
 
   if (monthGroups.length === 0) {
@@ -119,6 +122,7 @@ export default function SchoolYearCalendar({ days, schoolYearName, classId }: Sc
                         key={day?.date ?? `empty-${week.isoWeek}-${i}`}
                         day={day}
                         href={href}
+                        detailsMode={detailsMode}
                       />
                     ))}
                   </div>

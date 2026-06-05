@@ -41,11 +41,6 @@ function pickDefaultSchoolYearId(years: SchoolYearSummary[]): number | null {
   return current?.id ?? years[0]?.id ?? null;
 }
 
-function readUrlParam(key: string): string | null {
-  if (typeof window === 'undefined') return null;
-  const value = new URLSearchParams(window.location.search).get(key)?.trim();
-  return value && value.length > 0 ? value : null;
-}
 
 export default function HomePage() {
   const [schoolYears, setSchoolYears] = useState<SchoolYearSummary[]>([]);
@@ -56,6 +51,7 @@ export default function HomePage() {
   const [classesError, setClassesError] = useState<string | null>(null);
 
   const [viewMode, setViewMode] = useState<ViewMode>('single');
+  const [detailsMode, setDetailsMode] = useState(false);
 
   // ─── Single-class state ─────────────────────────────────────────────────────
   const [selectedFetchIds, setSelectedFetchIds] = useState<number[] | null>(null);
@@ -97,10 +93,13 @@ export default function HomePage() {
 
   // StrictMode-safe bootstrap (single AbortController shared with deep-link).
   useEffect(() => {
-    pendingClassNameRef.current = readUrlParam('class');
-    pendingCompanionNameRef.current = readUrlParam('companion');
-    pendingViewModeRef.current = readUrlParam('view');
-    const urlYearShort = readUrlParam('schoolyear');
+    const urlParams = new URLSearchParams(window.location.search);
+    const getP = (k: string) => { const v = urlParams.get(k)?.trim(); return v?.length ? v : null; };
+    pendingClassNameRef.current = getP('class');
+    pendingCompanionNameRef.current = getP('companion');
+    pendingViewModeRef.current = getP('view');
+    if (getP('details') != null) setDetailsMode(true);
+    const urlYearShort = getP('schoolyear');
     const controller = new AbortController();
     classesAbortRef.current = controller;
     void (async () => {
@@ -286,6 +285,7 @@ export default function HomePage() {
     if (pendingClassNameRef.current != null) return;
     const params = new URLSearchParams();
     params.set('schoolyear', selectedSchoolYearShort);
+    if (detailsMode) params.set('details', 'true');
     if (viewMode === 'all') {
       params.set('view', 'all');
     } else if (selectedClassName) {
@@ -298,7 +298,7 @@ export default function HomePage() {
     if (next !== window.location.pathname + window.location.search) {
       window.history.replaceState(null, '', next);
     }
-  }, [selectedSchoolYearShort, selectedClassName, selectedCompanion?.name, viewMode]);
+  }, [selectedSchoolYearShort, selectedClassName, selectedCompanion?.name, viewMode, detailsMode]);
   const subtitle = selectedCompanion ? `+ ${selectedCompanion.name}` : selectedClass?.longName;
 
   const iaVariants = useMemo(
@@ -430,7 +430,7 @@ export default function HomePage() {
                   className={selectedClass?.name ?? ''}
                   schoolYearName={calendarData.schoolYear.name}
                 />
-                <CalendarLegend variant="single" />
+                <CalendarLegend variant="single" detailsMode={detailsMode} />
               </div>
             </div>
 
@@ -438,6 +438,7 @@ export default function HomePage() {
               days={calendarData.days}
               schoolYearName={calendarData.schoolYear.name}
               classId={selectedClassId}
+              detailsMode={detailsMode}
             />
           </div>
         )}

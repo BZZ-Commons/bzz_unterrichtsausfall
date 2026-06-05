@@ -1,4 +1,4 @@
-import { AGGREGATED_DAY_STYLES, DAY_STYLES } from '@/src/lib/calendar-styles';
+import { AGGREGATED_DAY_STYLES, DAY_STYLES, PARTIAL_CANCEL_STYLE } from '@/src/lib/calendar-styles';
 
 type LegendVariant = 'single' | 'aggregated';
 
@@ -14,6 +14,17 @@ const SINGLE_ITEMS: LegendItem[] = [
   { cellClass: DAY_STYLES.ferien.cell,        label: 'Schulferien' },
 ];
 
+const PARTIAL_CANCEL_ITEM: LegendItem = {
+  cellClass: PARTIAL_CANCEL_STYLE.cell,
+  label: 'Einzelne Lektionen abgesagt',
+};
+
+const SINGLE_ITEMS_DETAILS: LegendItem[] = [
+  SINGLE_ITEMS[0],
+  PARTIAL_CANCEL_ITEM,
+  ...SINGLE_ITEMS.slice(1),
+];
+
 const AGGREGATED_ITEMS: LegendItem[] = [
   { cellClass: AGGREGATED_DAY_STYLES.normal.cell,    label: 'Alle Klassen normal' },
   { cellClass: AGGREGATED_DAY_STYLES.irregular.cell, label: 'Unregelmässigkeit (Klick für Details)' },
@@ -22,10 +33,13 @@ const AGGREGATED_ITEMS: LegendItem[] = [
 
 interface CalendarLegendProps {
   variant?: LegendVariant;
+  detailsMode?: boolean;
 }
 
-export default function CalendarLegend({ variant = 'single' }: CalendarLegendProps) {
-  const items = variant === 'aggregated' ? AGGREGATED_ITEMS : SINGLE_ITEMS;
+export default function CalendarLegend({ variant = 'single', detailsMode }: CalendarLegendProps) {
+  const items = variant === 'aggregated'
+    ? AGGREGATED_ITEMS
+    : detailsMode ? SINGLE_ITEMS_DETAILS : SINGLE_ITEMS;
   return (
     <div className="flex flex-wrap gap-3 text-xs">
       {items.map(({ cellClass, label }) => (

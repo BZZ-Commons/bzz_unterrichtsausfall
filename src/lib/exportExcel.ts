@@ -1,8 +1,7 @@
 import * as XLSX from 'xlsx';
 import { parseISO, format, getISODay } from 'date-fns';
+import { DOW_LABELS } from '@/src/lib/calendar-layout';
 import type { CalendarDay, DayType } from '@/src/types';
-
-const WEEKDAY_SHORT = ['', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
 const TYPE_LABELS: Record<DayType, string> = {
   normal: 'Normal',
@@ -25,7 +24,7 @@ export function exportCalendarToExcel(
       const date = parseISO(d.date);
       return {
         Datum: format(date, 'dd.MM.yyyy'),
-        Wochentag: WEEKDAY_SHORT[getISODay(date)] ?? '',
+        Wochentag: DOW_LABELS[getISODay(date) - 1] ?? '',
         Typ: TYPE_LABELS[d.type] ?? d.type,
         Bezeichnung: d.holidayName ?? d.eventName ?? '',
         Lektionen: d.lessonCount ?? '',
