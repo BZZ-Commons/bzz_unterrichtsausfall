@@ -122,7 +122,11 @@ function buildLessonMap(lessons: UntisLesson[]): Map<number, UntisLesson[]> {
 export function determineSchoolDays(lessons: UntisLesson[]): Set<number> {
   // Event periods ("Veranstaltung") don't represent regular scheduled school —
   // only real lessons (including cancelled ones) establish which days are school days.
-  const realLessons = lessons.filter((l) => !isEventPeriod(l));
+  return schoolDaysFromRealLessons(lessons.filter((l) => !isEventPeriod(l)));
+}
+
+/** Core of {@link determineSchoolDays}, operating on already-filtered real lessons. */
+function schoolDaysFromRealLessons(realLessons: UntisLesson[]): Set<number> {
   if (realLessons.length === 0) return new Set([1, 2, 3, 4, 5]);
 
   // Group by unique ISO week key (YYYY_WW)
@@ -173,7 +177,18 @@ export function classifyDays(
 ): CalendarDay[] {
   const holidayMap = buildHolidayMap(holidays);
   const lessonMap = buildLessonMap(lessons);
-  const schoolDays = determineSchoolDays(lessons);
+
+  // Real lessons (held or cancelled, excluding special events) drive both the
+  // school-day set and the last lesson date — filter once, reuse twice.
+  const realLessons = lessons.filter((l) => !isEventPeriod(l));
+  const schoolDays = schoolDaysFromRealLessons(realLessons);
+
+  // Last date the class has any scheduled lesson. Empty school days after this
+  // date mean the class has finished for the year (Abschlussklasse) — flagged
+  // below via `ended`.
+  const lastLessonDate = realLessons.length
+    ? Math.max(...realLessons.map((l) => l.date)) // YYYYMMDD numbers compare chronologically
+    : null;
 
   const result: CalendarDay[] = [];
   let current = new Date(schoolYear.startDate);
@@ -191,6 +206,7 @@ export function classifyDays(
     let eventName: string | undefined;
     let lessonCount: number | undefined;
     let cancelledCount: number | undefined;
+    let ended = false;
 
     if (isoDay >= 6) {
       // Saturday or Sunday
@@ -240,9 +256,16 @@ export function classifyDays(
             type = 'unterrichtsausfall';
             if (event) eventName = getEventText(event)?.replace(/^Unterrichtsausfall:\s*/i, '').trim() || undefined;
           }
+        } else if (schoolDays.has(isoDay)) {
+          // No lessons at all on a school day → Unterrichtsausfall.
+          type = 'unterrichtsausfall';
+          // After the class's last scheduled lesson, an empty school day means the
+          // class has finished the year (Abschlussklasse). Flag it so the all-classes
+          // overview can surface it; the single-class view ignores the flag.
+          if (lastLessonDate != null && untisDate > lastLessonDate) ended = true;
         } else {
-          // No lessons at all — is this a defined school day for this class?
-          type = schoolDays.has(isoDay) ? 'unterrichtsausfall' : 'no-lessons';
+          // Weekday the class never meets → stays gray.
+          type = 'no-lessons';
         }
       }
     }
@@ -252,6 +275,7 @@ export function classifyDays(
     if (eventName !== undefined) day.eventName = eventName;
     if (lessonCount !== undefined) day.lessonCount = lessonCount;
     if (cancelledCount !== undefined && cancelledCount > 0) day.cancelledCount = cancelledCount;
+    if (ended) day.ended = true;
 
     result.push(day);
     current = addDays(current, 1);

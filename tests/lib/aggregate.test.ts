@@ -218,4 +218,47 @@ describe('aggregateClassDays', () => {
     ]);
     expect(result).toEqual([{ date: D1, type: 'normal' }]);
   });
+
+  // ─── ended classes (Abschlussklasse finished the year) ──────────────────────
+
+  it('marks day irregular when a finished (ended) class meets an actively-teaching class', () => {
+    const result = aggregateClassDays([
+      makeClass('A', 1, [{ date: D1, type: 'normal', lessonCount: 4 }]),
+      makeClass('B', 2, [{ date: D1, type: 'unterrichtsausfall', lessonCount: 0, ended: true }]),
+    ]);
+    expect(result[0].type).toBe('irregular');
+    expect(result[0].affectedClasses).toEqual([
+      { className: 'B', classId: 2, type: 'unterrichtsausfall', lessonCount: 0, cancelledCount: 0 },
+    ]);
+  });
+
+  it('counts ended as active via a veranstaltung class too', () => {
+    const result = aggregateClassDays([
+      makeClass('A', 1, [{ date: D1, type: 'veranstaltung' }]),
+      makeClass('B', 2, [{ date: D1, type: 'unterrichtsausfall', lessonCount: 0, ended: true }]),
+    ]);
+    expect(result[0].type).toBe('irregular');
+    expect((result[0].affectedClasses ?? []).map((c) => c.className)).toEqual(['B']);
+  });
+
+  it('ignores ended classes when NO class is still actively teaching (year just ends for all)', () => {
+    const result = aggregateClassDays([
+      makeClass('A', 1, [{ date: D1, type: 'unterrichtsausfall', lessonCount: 0, ended: true }]),
+      makeClass('B', 2, [{ date: D1, type: 'no-lessons' }]),
+    ]);
+    expect(result[0].type).toBe('no-school');
+    expect(result[0].affectedClasses).toBeUndefined();
+  });
+
+  it('lists both cancelled and ended classes in affectedClasses (cancelled first)', () => {
+    const result = aggregateClassDays([
+      makeClass('A', 1, [{ date: D1, type: 'normal', lessonCount: 4 }]),
+      makeClass('B', 2, [{ date: D1, type: 'unterrichtsausfall', lessonCount: 0, cancelledCount: 3 }]),
+      makeClass('C', 3, [{ date: D1, type: 'unterrichtsausfall', lessonCount: 0, ended: true }]),
+    ]);
+    expect(result[0].type).toBe('irregular');
+    expect((result[0].affectedClasses ?? []).map((c) => c.className)).toEqual(['B', 'C']);
+    const ended = result[0].affectedClasses?.find((c) => c.className === 'C');
+    expect(ended).toMatchObject({ lessonCount: 0, cancelledCount: 0 });
+  });
 });

@@ -286,6 +286,70 @@ describe('unterrichtsausfall classification', () => {
   });
 });
 
+// ─── ended flag (Abschlussklasse — finished the year) ────────────────────────
+
+describe('classifyDays — ended flag (class finished for the year)', () => {
+  // 5-week year (Mon Aug 18 → Fri Sep 19). School days are Mon–Thu.
+  const LONG_SCHOOL_YEAR: UntisSchoolYear = {
+    id: 1,
+    name: '2025/2026',
+    startDate: new Date(2025, 7, 18), // Mon Aug 18
+    endDate: new Date(2025, 8, 19),   // Fri Sep 19
+  };
+
+  // Lessons Mon–Thu in weeks 1,2,4; week 3 Monday (20250901) intentionally empty
+  // (a mid-year gap); last lesson = week 4 Thursday (20250911); week 5 fully empty.
+  const lessons: UntisLesson[] = [
+    20250818, 20250819, 20250820, 20250821, // week 1 Mon–Thu
+    20250825, 20250826, 20250827, 20250828, // week 2 Mon–Thu
+    /* 20250901 gap */ 20250902, 20250903, 20250904, // week 3 Tue–Thu
+    20250908, 20250909, 20250910, 20250911, // week 4 Mon–Thu (last = 20250911)
+  ].map((d) => makeLesson(d));
+
+  it('flags empty school days AFTER the last lesson as ended (still unterrichtsausfall)', () => {
+    const days = classifyDays(LONG_SCHOOL_YEAR, [], lessons);
+    const mon5 = days.find((d) => d.date === '2025-09-15'); // week 5 Mon, after last lesson
+    expect(mon5?.type).toBe('unterrichtsausfall');
+    expect(mon5?.ended).toBe(true);
+    const thu5 = days.find((d) => d.date === '2025-09-18'); // week 5 Thu
+    expect(thu5?.ended).toBe(true);
+  });
+
+  it('does NOT flag an empty school day BEFORE the last lesson (intermittent gap)', () => {
+    const days = classifyDays(LONG_SCHOOL_YEAR, [], lessons);
+    const gapMon = days.find((d) => d.date === '2025-09-01'); // week 3 Mon, before last lesson
+    expect(gapMon?.type).toBe('unterrichtsausfall');
+    expect(gapMon?.ended).toBeUndefined();
+  });
+
+  it('does NOT flag non-school weekdays after the last lesson (stays no-lessons)', () => {
+    const days = classifyDays(LONG_SCHOOL_YEAR, [], lessons);
+    const fri5 = days.find((d) => d.date === '2025-09-19'); // week 5 Fri — never a school day
+    expect(fri5?.type).toBe('no-lessons');
+    expect(fri5?.ended).toBeUndefined();
+  });
+
+  it('does NOT flag ended when the class has no lessons at all (lastLessonDate null)', () => {
+    const days = classifyDays(LONG_SCHOOL_YEAR, [], []);
+    for (const day of days) expect(day.ended).toBeUndefined();
+  });
+
+  it('treats a cancelled lesson as the last lesson — empty days after it are ended', () => {
+    // Last entry is a cancelled lesson (still a scheduled-lesson entry).
+    const withCancelledTail: UntisLesson[] = [
+      ...lessons,
+      makeLesson(20250915, 'cancelled'), // week 5 Mon: all cancelled
+    ];
+    const days = classifyDays(LONG_SCHOOL_YEAR, [], withCancelledTail);
+    const mon5 = days.find((d) => d.date === '2025-09-15'); // has cancelled lessons → not empty
+    expect(mon5?.type).toBe('unterrichtsausfall');
+    expect(mon5?.cancelledCount).toBe(1);
+    expect(mon5?.ended).toBeUndefined(); // not an empty day → not flagged here
+    const tue5 = days.find((d) => d.date === '2025-09-16'); // empty school day after 20250915
+    expect(tue5?.ended).toBe(true);
+  });
+});
+
 // ─── Veranstaltung (event) → Schulausfall ─────────────────────────────────────
 
 describe('classifyDays — Veranstaltung (irregular event with no subject)', () => {

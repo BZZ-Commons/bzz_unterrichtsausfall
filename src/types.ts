@@ -20,6 +20,12 @@ export interface CalendarDay {
   lessonCount?: number;
   /** Lessons that were scheduled but cancelled. */
   cancelledCount?: number;
+  /**
+   * True wenn dies ein Schultag NACH der letzten Lektion der Klasse ist
+   * (Abschlussklasse hat das Schuljahr beendet — keine Lektionen mehr bis Jahresende).
+   * Nur in der Gesamtübersicht ausgewertet; die Einzelansicht ignoriert das Feld.
+   */
+  ended?: boolean;
 }
 
 export interface UntisHoliday {

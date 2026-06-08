@@ -19,10 +19,11 @@ export interface PerClassClassification {
  * Aggregation rules (in order, first match wins per date):
  *  1. Any class marks the day as `ferien` → `ferien` (with holidayName)
  *  2. All classes mark the day as `weekend` → `weekend`
- *  3. Any class has Schulausfall with `cancelledCount > 0` → `irregular`,
+ *  3. Any class has Schulausfall with `cancelledCount > 0`, OR a class has finished
+ *     the year (`ended`) while another class is still teaching → `irregular`;
  *     `affectedClasses` lists those classes. Classes with `unterrichtsausfall` but
- *     zero recorded cancellations are ignored — that pattern usually means the
- *     class just doesn't meet on that weekday rather than a real cancellation.
+ *     zero recorded cancellations and no `ended` flag are ignored — that pattern
+ *     usually means the class just doesn't meet on that weekday.
  *  4. Any class marks the day as `normal` → `normal`
  *  5. Date is in `holidayMap` (institution-level holiday) → `ferien`.
  *     Handles the case where no class meets on a holiday weekday, so every
@@ -89,12 +90,25 @@ function classifyAggregatedDay(
     return { date, type: 'weekend' };
   }
 
-  // 3. Irregular — any class has Schulausfall WITH at least one recorded cancellation.
-  // Classes that simply have no lessons scheduled for the day (cancelledCount=0)
-  // are not real "irregularities" — they usually just don't meet that weekday.
-  const affected = entries.filter(
+  // 3. Irregular — surfaced by either of two signals:
+  //   a) A class has Schulausfall WITH at least one recorded cancellation. Classes that
+  //      simply have no lessons scheduled (cancelledCount=0) are not real irregularities —
+  //      they usually just don't meet that weekday.
+  //   b) A class has FINISHED the school year (`ended`: an empty school day after its last
+  //      lesson, e.g. Abschlussklassen in the final weeks) while at least one other class is
+  //      still actively teaching. Without an active class it's just the year ending for
+  //      everyone, so `ended` is ignored then (→ falls through to no-school below).
+  const cancelled = entries.filter(
     (e) => e.day.type === 'unterrichtsausfall' && (e.day.cancelledCount ?? 0) > 0,
   );
+  const activeSomewhere = entries.some(
+    (e) => e.day.type === 'normal' || e.day.type === 'veranstaltung',
+  );
+  const ended = activeSomewhere
+    ? entries.filter((e) => e.day.type === 'unterrichtsausfall' && e.day.ended === true)
+    : [];
+  // Disjoint by construction: cancelled has cancelledCount>0, ended has cancelledCount=0.
+  const affected = [...cancelled, ...ended];
   if (affected.length > 0) {
     const affectedClasses: ClassDayStatus[] = affected.map(({ source, day }) => ({
       className: source.className,
@@ -110,7 +124,7 @@ function classifyAggregatedDay(
   }
 
   // 4. Normal — at least one class has normal lessons or a Veranstaltung
-  if (entries.some((e) => e.day.type === 'normal' || e.day.type === 'veranstaltung')) {
+  if (activeSomewhere) {
     return { date, type: 'normal' };
   }
 
