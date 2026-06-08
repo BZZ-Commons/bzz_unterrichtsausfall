@@ -26,22 +26,30 @@ export function parseUntisDate(date: number): Date {
  * Whether a day actually renders as ferien (violet) or no-lessons (gray) is
  * decided downstream in `classifyDays`, based on the class's school days.
  */
-function buildHolidayMap(holidays: UntisHoliday[]): Map<number, string> {
-  const map = new Map<number, string>();
-
+function buildHolidayMapWith<K>(
+  holidays: UntisHoliday[],
+  keyFn: (date: Date) => K,
+): Map<K, string> {
+  const map = new Map<K, string>();
   for (const holiday of holidays) {
     const displayName = holiday.longName || holiday.name;
     let current = parseUntisDate(holiday.startDate);
     const end = parseUntisDate(holiday.endDate);
-
     while (current <= end) {
-      const key = parseInt(format(current, 'yyyyMMdd'), 10);
-      map.set(key, displayName);
+      map.set(keyFn(current), displayName);
       current = addDays(current, 1);
     }
   }
-
   return map;
+}
+
+function buildHolidayMap(holidays: UntisHoliday[]): Map<number, string> {
+  return buildHolidayMapWith(holidays, (d) => parseInt(format(d, 'yyyyMMdd'), 10));
+}
+
+/** Build a 'YYYY-MM-DD' → holiday name map for use in aggregate classification. */
+export function buildHolidayDateMap(holidays: UntisHoliday[]): Map<string, string> {
+  return buildHolidayMapWith(holidays, (d) => format(d, 'yyyy-MM-dd'));
 }
 
 /**

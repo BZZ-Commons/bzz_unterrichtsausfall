@@ -175,6 +175,17 @@ export default function HomePage() {
   const loadAggregated = useCallback(async (yearId?: number) => {
     const yId = yearId ?? selectedSchoolYearId;
     if (yId == null) return;
+
+    // Serve from cache first — the all-classes fetch is slow (30–60 s).
+    const cacheKey = `calendar-data-all-${yId}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        setAggregatedData(JSON.parse(cached) as AggregatedCalendarData);
+        return;
+      } catch { /* corrupted cache — fall through to fetch */ }
+    }
+
     aggregatedAbortRef.current?.abort();
     const controller = new AbortController();
     aggregatedAbortRef.current = controller;
@@ -184,6 +195,7 @@ export default function HomePage() {
       const url = `/api/calendar-data-all?schoolyearId=${yId}`;
       const data = await fetchJson<AggregatedCalendarData>(url, controller.signal);
       if (controller.signal.aborted) return;
+      try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch { /* storage full — ignore */ }
       setAggregatedData(data);
     } catch (err) {
       if (isAbortError(err)) return;

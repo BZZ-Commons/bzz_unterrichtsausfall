@@ -139,6 +139,62 @@ describe('aggregateClassDays', () => {
     expect(result[0].holidayName).toBeUndefined();
   });
 
+  // ─── holidayMap parameter (ferien-bug fix) ──────────────────────────────────
+
+  it('marks vacation weekday as ferien when ALL classes have no-lessons (no class meets that day)', () => {
+    // BZZ Berufsschule: all classes only meet Mon/Wed. A Tuesday holiday would
+    // produce no-lessons for every class → must still be ferien, not no-school.
+    const holidayMap = new Map([['2025-08-19', 'Herbstferien']]); // D2 = Tuesday
+    const result = aggregateClassDays(
+      [
+        makeClass('A', 1, [{ date: D1, type: 'normal', lessonCount: 4 }, { date: D2, type: 'no-lessons' }]),
+        makeClass('B', 2, [{ date: D1, type: 'normal', lessonCount: 6 }, { date: D2, type: 'no-lessons' }]),
+      ],
+      holidayMap,
+    );
+    const tue = result.find((d) => d.date === D2);
+    expect(tue?.type).toBe('ferien');
+    expect(tue?.holidayName).toBe('Herbstferien');
+  });
+
+  it('prefers per-class ferien over holidayMap (no regression on existing ferien flow)', () => {
+    const holidayMap = new Map([['2025-08-18', 'Herbstferien']]);
+    const result = aggregateClassDays(
+      [makeClass('A', 1, [{ date: D1, type: 'ferien', holidayName: 'Herbstferien' }])],
+      holidayMap,
+    );
+    expect(result[0].type).toBe('ferien');
+    expect(result[0].holidayName).toBe('Herbstferien');
+  });
+
+  it('does NOT mark no-school as ferien when date is not in holidayMap', () => {
+    const holidayMap = new Map([['2025-08-19', 'Herbstferien']]); // D2 only, not D1
+    const result = aggregateClassDays(
+      [makeClass('A', 1, [{ date: D1, type: 'no-lessons' }, { date: D2, type: 'no-lessons' }])],
+      holidayMap,
+    );
+    const mon = result.find((d) => d.date === D1);
+    expect(mon?.type).toBe('no-school'); // not a holiday → stays gray
+  });
+
+  it('does NOT recolor weekend inside holiday range to ferien', () => {
+    // Saturday 2025-08-23 happens to fall in a holiday window — must stay weekend.
+    const sat = '2025-08-23';
+    const holidayMap = new Map([[sat, 'Herbstferien']]);
+    const result = aggregateClassDays(
+      [makeClass('A', 1, [{ date: sat, type: 'weekend' }])],
+      holidayMap,
+    );
+    expect(result[0].type).toBe('weekend');
+  });
+
+  it('works with no holidayMap passed (undefined) — existing behaviour unchanged', () => {
+    const result = aggregateClassDays([
+      makeClass('A', 1, [{ date: D1, type: 'no-lessons' }]),
+    ]);
+    expect(result[0].type).toBe('no-school');
+  });
+
   it('marks day as out-of-year when all classes are out-of-year', () => {
     const result = aggregateClassDays([
       makeClass('A', 1, [{ date: D1, type: 'out-of-year' }]),

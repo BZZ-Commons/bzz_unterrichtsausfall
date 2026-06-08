@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { WebUntis } from 'webuntis';
 import { withUntisClient, resolveSchoolyear, mapWithConcurrency } from '@/src/lib/webuntis';
-import { classifyDays, deduplicateLessons } from '@/src/lib/calendar';
+import { classifyDays, deduplicateLessons, buildHolidayDateMap } from '@/src/lib/calendar';
 import { aggregateClassDays, type PerClassClassification } from '@/src/lib/aggregate';
 import { listActiveClassesEnriched } from '@/src/lib/classes-server';
 import type {
@@ -112,7 +112,7 @@ export async function GET(request: Request): Promise<NextResponse> {
           days: classifyDays(schoolYear, holidays, merged),
         }));
 
-      const days = aggregateClassDays(perClass);
+      const days = aggregateClassDays(perClass, buildHolidayDateMap(holidays));
 
       return {
         schoolYear: {

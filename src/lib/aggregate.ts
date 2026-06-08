@@ -24,13 +24,21 @@ export interface PerClassClassification {
  *     zero recorded cancellations are ignored — that pattern usually means the
  *     class just doesn't meet on that weekday rather than a real cancellation.
  *  4. Any class marks the day as `normal` → `normal`
- *  5. Otherwise (every class `no-lessons`/`out-of-year`) → `no-school`
+ *  5. Date is in `holidayMap` (institution-level holiday) → `ferien`.
+ *     Handles the case where no class meets on a holiday weekday, so every
+ *     class would produce `no-lessons` instead of `ferien`.
+ *  6. Otherwise (every class `no-lessons`/`out-of-year`) → `no-school`
+ *
+ * `holidayMap` is an optional 'YYYY-MM-DD' → holiday-name map built from the
+ * WebUntis holidays API.  Pass it from the aggregate API route so that
+ * rule 5 fires correctly; omit it when running unit tests that don't need it.
  *
  * Requires all inputs to share the same day order/dates. Missing classes
  * for a date are ignored.
  */
 export function aggregateClassDays(
   perClass: ReadonlyArray<PerClassClassification>,
+  holidayMap?: ReadonlyMap<string, string>,
 ): AggregatedDay[] {
   if (perClass.length === 0) return [];
 
@@ -49,16 +57,22 @@ export function aggregateClassDays(
 
   return dateOrder.map((date): AggregatedDay => {
     const entries = byDate.get(date) ?? [];
-    return classifyAggregatedDay(date, entries);
+    return classifyAggregatedDay(date, entries, holidayMap);
   });
+}
+
+function asHolidayDay(date: string, holidayMap?: ReadonlyMap<string, string>): AggregatedDay | undefined {
+  const holidayName = holidayMap?.get(date);
+  return holidayName !== undefined ? { date, type: 'ferien', holidayName } : undefined;
 }
 
 function classifyAggregatedDay(
   date: string,
   entries: ReadonlyArray<{ source: PerClassClassification; day: CalendarDay }>,
+  holidayMap?: ReadonlyMap<string, string>,
 ): AggregatedDay {
   if (entries.length === 0) {
-    return { date, type: 'no-school' };
+    return asHolidayDay(date, holidayMap) ?? { date, type: 'no-school' };
   }
 
   // 1. Ferien — shared across all classes; prefer the first entry with a holidayName
@@ -100,8 +114,11 @@ function classifyAggregatedDay(
     return { date, type: 'normal' };
   }
 
-  // 5. Fallthrough — only no-lessons / out-of-year for everyone
-  return { date, type: classifyFallthrough(entries) };
+  // 5. Holiday map — date is a known institution holiday even though no class
+  //    was scheduled on this weekday (Berufsschule partial-week schedules mean
+  //    every class produced `no-lessons` instead of `ferien`).
+  // 6. Fallthrough — only no-lessons / out-of-year for everyone
+  return asHolidayDay(date, holidayMap) ?? { date, type: classifyFallthrough(entries) };
 }
 
 function classifyFallthrough(
