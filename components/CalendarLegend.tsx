@@ -14,14 +14,9 @@ const SINGLE_ITEMS: LegendItem[] = [
   { cellClass: DAY_STYLES.ferien.cell,        label: 'Schulferien' },
 ];
 
-const PARTIAL_CANCEL_ITEM: LegendItem = {
-  cellClass: PARTIAL_CANCEL_STYLE.cell,
-  label: 'Einzelne Lektionen abgesagt',
-};
-
 const SINGLE_ITEMS_DETAILS: LegendItem[] = [
   SINGLE_ITEMS[0],
-  PARTIAL_CANCEL_ITEM,
+  { cellClass: PARTIAL_CANCEL_STYLE.cell, label: 'Einzelne Lektionen abgesagt' },
   ...SINGLE_ITEMS.slice(1),
 ];
 

@@ -35,7 +35,6 @@ export async function GET(request: Request): Promise<NextResponse> {
         endDate: new Date(rawSchoolYear.endDate),
       };
 
-      // Fetch holidays + timetable for all class IDs in parallel
       const [holidays, ...lessonArrays] = await Promise.all([
         untis.getHolidays(true) as Promise<UntisHoliday[]>,
         ...allClassIds.map(

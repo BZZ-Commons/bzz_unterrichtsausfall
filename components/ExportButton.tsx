@@ -8,12 +8,13 @@ interface ExportButtonProps {
   days: CalendarDay[];
   className: string;
   schoolYearName: string;
+  detailsMode?: boolean;
 }
 
-export default function ExportButton({ days, className, schoolYearName }: ExportButtonProps) {
+export default function ExportButton({ days, className, schoolYearName, detailsMode }: ExportButtonProps) {
   return (
     <button
-      onClick={() => exportCalendarToExcel(days, className, schoolYearName)}
+      onClick={() => exportCalendarToExcel(days, className, schoolYearName, detailsMode)}
       title="Als Excel exportieren"
       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
     >

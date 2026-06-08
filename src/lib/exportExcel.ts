@@ -17,30 +17,36 @@ export function exportCalendarToExcel(
   days: CalendarDay[],
   className: string,
   schoolYearName: string,
+  detailsMode = false,
 ): void {
+  const COLUMNS = [
+    { key: 'Datum',       wch: 12, detailsOnly: false },
+    { key: 'Wochentag',   wch: 10, detailsOnly: false },
+    { key: 'Typ',         wch: 22, detailsOnly: false },
+    { key: 'Bezeichnung', wch: 45, detailsOnly: false },
+    { key: 'Lektionen',   wch: 10, detailsOnly: true  },
+    { key: 'Abgesagt',    wch: 10, detailsOnly: true  },
+  ] as const;
+
+  const activeCols = COLUMNS.filter((c) => !c.detailsOnly || detailsMode);
+
   const rows = days
     .filter((d) => d.type !== 'weekend' && d.type !== 'out-of-year' && d.type !== 'no-lessons')
     .map((d) => {
       const date = parseISO(d.date);
-      return {
-        Datum: format(date, 'dd.MM.yyyy'),
-        Wochentag: DOW_LABELS[getISODay(date) - 1] ?? '',
-        Typ: TYPE_LABELS[d.type] ?? d.type,
+      const full = {
+        Datum:       format(date, 'dd.MM.yyyy'),
+        Wochentag:   DOW_LABELS[getISODay(date) - 1] ?? '',
+        Typ:         TYPE_LABELS[d.type] ?? d.type,
         Bezeichnung: d.holidayName ?? d.eventName ?? '',
-        Lektionen: d.lessonCount ?? '',
-        Abgesagt: d.cancelledCount ?? '',
+        Lektionen:   d.lessonCount ?? '',
+        Abgesagt:    d.cancelledCount ?? '',
       };
+      return Object.fromEntries(activeCols.map((c) => [c.key, full[c.key]]));
     });
 
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [
-    { wch: 12 },
-    { wch: 10 },
-    { wch: 22 },
-    { wch: 45 },
-    { wch: 10 },
-    { wch: 10 },
-  ];
+  ws['!cols'] = activeCols.map(({ wch }) => ({ wch }));
 
   const wb = XLSX.utils.book_new();
   const sheetName = className.replace(/[/\\?*[\]]/g, '').slice(0, 31) || 'Export';

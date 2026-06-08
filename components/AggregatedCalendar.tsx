@@ -3,7 +3,8 @@
 import { memo, useMemo } from 'react';
 import { buildMonthGroups, DOW_LABELS } from '@/src/lib/calendar-layout';
 import { AGGREGATED_DAY_STYLES } from '@/src/lib/calendar-styles';
-import type { AggregatedDay } from '@/src/types';
+import { PeriodDivider, buildDividerMap } from '@/components/PeriodDivider';
+import type { AggregatedDay, SchoolPeriod } from '@/src/types';
 
 function buildTooltip(day: AggregatedDay): string | undefined {
   if (day.holidayName) return day.holidayName;
@@ -77,14 +78,20 @@ interface AggregatedCalendarProps {
   days: AggregatedDay[];
   schoolYearName: string;
   onDaySelect: (day: AggregatedDay) => void;
+  periods?: SchoolPeriod[];
 }
 
 export default function AggregatedCalendar({
   days,
   schoolYearName,
   onDaySelect,
+  periods,
 }: AggregatedCalendarProps) {
   const monthGroups = useMemo(() => buildMonthGroups(days), [days]);
+  const dividerMap = useMemo(
+    () => (periods?.length ? buildDividerMap(periods) : new Map()),
+    [periods],
+  );
 
   if (monthGroups.length === 0) {
     return (
@@ -116,22 +123,28 @@ export default function AggregatedCalendar({
           </h2>
 
           <div className="space-y-1">
-            {group.weeks.map((week) => (
-              <div key={week.isoWeek} className="grid grid-cols-[3rem_1fr] gap-2 items-center">
-                <div className="text-xs text-slate-400 text-right pr-1 tabular-nums">
-                  {week.isoWeek}
+            {group.weeks.map((week) => {
+              const divider = dividerMap.get(week.monday);
+              return (
+                <div key={week.isoWeek}>
+                  {divider && <PeriodDivider quarter={divider.quarter} semester={divider.semester} />}
+                  <div className="grid grid-cols-[3rem_1fr] gap-2 items-center">
+                    <div className="text-xs text-slate-400 text-right pr-1 tabular-nums">
+                      {week.isoWeek}
+                    </div>
+                    <div className="grid grid-cols-7 gap-1">
+                      {week.days.map((day, i) => (
+                        <DayCell
+                          key={day?.date ?? `empty-${week.isoWeek}-${i}`}
+                          day={day}
+                          onSelect={onDaySelect}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {week.days.map((day, i) => (
-                    <DayCell
-                      key={day?.date ?? `empty-${week.isoWeek}-${i}`}
-                      day={day}
-                      onSelect={onDaySelect}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       ))}

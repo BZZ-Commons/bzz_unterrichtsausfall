@@ -4,7 +4,8 @@ import { memo, useMemo } from 'react';
 import { buildDayTooltip } from '@/src/lib/calendar';
 import { buildMonthGroups, DOW_LABELS } from '@/src/lib/calendar-layout';
 import { DAY_STYLES, PARTIAL_CANCEL_STYLE } from '@/src/lib/calendar-styles';
-import type { CalendarDay } from '@/src/types';
+import { PeriodDivider, buildDividerMap } from '@/components/PeriodDivider';
+import type { CalendarDay, SchoolPeriod } from '@/src/types';
 
 function untisWeekHref(monday: string, classId: number): string {
   return `https://bzz.webuntis.com/WebUntis?school=bzz#/basic/timetablePublic/class?date=${monday}&entityId=${classId}`;
@@ -65,10 +66,15 @@ interface SchoolYearCalendarProps {
   schoolYearName: string;
   classId: number;
   detailsMode?: boolean;
+  periods?: SchoolPeriod[];
 }
 
-export default function SchoolYearCalendar({ days, schoolYearName, classId, detailsMode }: SchoolYearCalendarProps) {
+export default function SchoolYearCalendar({ days, schoolYearName, classId, detailsMode, periods }: SchoolYearCalendarProps) {
   const monthGroups = useMemo(() => buildMonthGroups(days), [days]);
+  const dividerMap = useMemo(
+    () => (periods?.length ? buildDividerMap(periods) : new Map()),
+    [periods],
+  );
 
   if (monthGroups.length === 0) {
     return (
@@ -104,27 +110,33 @@ export default function SchoolYearCalendar({ days, schoolYearName, classId, deta
           <div className="space-y-1">
             {group.weeks.map((week) => {
               const href = untisWeekHref(week.monday, classId);
+              const divider = dividerMap.get(week.monday);
               return (
-                <div key={week.isoWeek} className="grid grid-cols-[3rem_1fr] gap-2 items-center">
-                  {/* ISO week number — also links to that week */}
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-slate-400 text-right pr-1 tabular-nums hover:text-indigo-500 transition-colors"
-                  >
-                    {week.isoWeek}
-                  </a>
-                  {/* 7 day cells */}
-                  <div className="grid grid-cols-7 gap-1">
-                    {week.days.map((day, i) => (
-                      <DayCell
-                        key={day?.date ?? `empty-${week.isoWeek}-${i}`}
-                        day={day}
-                        href={href}
-                        detailsMode={detailsMode}
-                      />
-                    ))}
+                <div key={week.isoWeek}>
+                  {divider && (
+                    <PeriodDivider quarter={divider.quarter} semester={divider.semester} />
+                  )}
+                  <div className="grid grid-cols-[3rem_1fr] gap-2 items-center">
+                    {/* ISO week number — also links to that week */}
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-slate-400 text-right pr-1 tabular-nums hover:text-indigo-500 transition-colors"
+                    >
+                      {week.isoWeek}
+                    </a>
+                    {/* 7 day cells */}
+                    <div className="grid grid-cols-7 gap-1">
+                      {week.days.map((day, i) => (
+                        <DayCell
+                          key={day?.date ?? `empty-${week.isoWeek}-${i}`}
+                          day={day}
+                          href={href}
+                          detailsMode={detailsMode}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
               );

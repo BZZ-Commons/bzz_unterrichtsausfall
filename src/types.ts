@@ -75,6 +75,13 @@ export interface SchoolYearSummary {
   endDate: string;
 }
 
+export interface SchoolPeriod {
+  name: string;        // "Q1", "Q2", "Q3", "Q4", "1. Semester", "2. Semester"
+  type: 'quarter' | 'semester';
+  startDate: string;   // 'YYYY-MM-DD'
+  endDate: string;     // 'YYYY-MM-DD'
+}
+
 export interface CalendarData {
   schoolYear: SchoolYearSummary;
   days: CalendarDay[];

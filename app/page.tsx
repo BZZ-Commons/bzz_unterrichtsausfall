@@ -11,12 +11,14 @@ import ViewToggle, { type ViewMode } from '@/components/ViewToggle';
 import AggregatedCalendar from '@/components/AggregatedCalendar';
 import DayDetailsDialog from '@/components/DayDetailsDialog';
 import ExportButton from '@/components/ExportButton';
+import DetailsToggle from '@/components/DetailsToggle';
 import { isIAClass, getIAVariants, normalize } from '@/src/lib/classGroups';
 import { findSchoolYearByShort, schoolYearShort } from '@/src/lib/schoolYear';
 import type {
   AggregatedCalendarData,
   AggregatedDay,
   CalendarData,
+  SchoolPeriod,
   SchoolYearSummary,
   UntisClass,
 } from '@/src/types';
@@ -52,6 +54,9 @@ export default function HomePage() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('single');
   const [detailsMode, setDetailsMode] = useState(false);
+
+  // School periods (Q1–Q4, Semester 1/2) — fetched once per school year, cached in sessionStorage
+  const [periods, setPeriods] = useState<SchoolPeriod[]>([]);
 
   // ─── Single-class state ─────────────────────────────────────────────────────
   const [selectedFetchIds, setSelectedFetchIds] = useState<number[] | null>(null);
@@ -91,6 +96,28 @@ export default function HomePage() {
     }
   }, []);
 
+  const loadPeriods = useCallback(async (yearId: number, signal?: AbortSignal) => {
+    const cacheKey = `school-periods-${yearId}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      try { setPeriods(JSON.parse(cached) as SchoolPeriod[]); return; } catch { /* ignore */ }
+    }
+    try {
+      const data = await fetchJson<SchoolPeriod[]>(`/api/school-periods?schoolyearId=${yearId}`, signal);
+      if (signal?.aborted) return;
+      sessionStorage.setItem(cacheKey, JSON.stringify(data));
+      setPeriods(data);
+    } catch (err) {
+      if (!isAbortError(err)) setPeriods([]);
+    }
+  }, []);
+
+  const loadYearData = useCallback(
+    (yearId: number, signal: AbortSignal) =>
+      Promise.all([loadClassesForYear(yearId, signal), loadPeriods(yearId, signal)]),
+    [loadClassesForYear, loadPeriods],
+  );
+
   // StrictMode-safe bootstrap (single AbortController shared with deep-link).
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -115,7 +142,7 @@ export default function HomePage() {
           return;
         }
         setSelectedSchoolYearId(yearId);
-        await loadClassesForYear(yearId, controller.signal);
+        await loadYearData(yearId, controller.signal);
       } catch (err) {
         if (isAbortError(err)) return;
         setClassesError(err instanceof Error ? err.message : 'Fehler beim Initialisieren');
@@ -181,9 +208,9 @@ export default function HomePage() {
     setAggregatedError(null);
     setIaDialogClass(null);
     setSelectedAggregatedDay(null);
-    await loadClassesForYear(id, controller.signal);
+    await loadYearData(id, controller.signal);
     if (viewMode === 'all') void loadAggregated(id);
-  }, [selectedSchoolYearId, loadClassesForYear, viewMode, loadAggregated]);
+  }, [selectedSchoolYearId, loadYearData, viewMode, loadAggregated]);
 
   const handleClassChange = useCallback((id: number) => {
     const cls = classes.find((c) => c.id === id);
@@ -424,11 +451,13 @@ export default function HomePage() {
                   Schuljahr {calendarData.schoolYear.name}
                 </p>
               </div>
-              <div className="sm:ml-auto flex items-center gap-3">
+              <div className="sm:ml-auto flex flex-wrap items-center gap-3">
+                <DetailsToggle checked={detailsMode} onChange={setDetailsMode} />
                 <ExportButton
                   days={calendarData.days}
                   className={selectedClass?.name ?? ''}
                   schoolYearName={calendarData.schoolYear.name}
+                  detailsMode={detailsMode}
                 />
                 <CalendarLegend variant="single" detailsMode={detailsMode} />
               </div>
@@ -439,6 +468,7 @@ export default function HomePage() {
               schoolYearName={calendarData.schoolYear.name}
               classId={selectedClassId}
               detailsMode={detailsMode}
+              periods={periods}
             />
           </div>
         )}
@@ -463,6 +493,7 @@ export default function HomePage() {
               days={aggregatedData.days}
               schoolYearName={aggregatedData.schoolYear.name}
               onDaySelect={setSelectedAggregatedDay}
+              periods={periods}
             />
           </div>
         )}
