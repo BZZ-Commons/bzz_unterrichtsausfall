@@ -30,7 +30,9 @@ export async function listActiveClassesEnriched(
   schoolYearId: number,
 ): Promise<UntisClass[]> {
   const raw = (await untis.getClasses(true, schoolYearId)) as UntisClass[];
-  const active = raw.filter((c) => c.active);
+  const active = raw.filter(
+    (c) => c.active && PREFIX_ORDER.some((p) => c.name.toUpperCase().startsWith(p)),
+  );
 
   const classMap = buildClassMap(active);
   const iaYearsWithC = getIAYearsWithC(active);
