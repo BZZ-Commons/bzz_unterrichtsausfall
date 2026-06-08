@@ -67,9 +67,10 @@ interface SchoolYearCalendarProps {
   classId: number;
   detailsMode?: boolean;
   periods?: SchoolPeriod[];
+  showQuarterDividers?: boolean;
 }
 
-export default function SchoolYearCalendar({ days, schoolYearName, classId, detailsMode, periods }: SchoolYearCalendarProps) {
+export default function SchoolYearCalendar({ days, schoolYearName, classId, detailsMode, periods, showQuarterDividers = false }: SchoolYearCalendarProps) {
   const monthGroups = useMemo(() => buildMonthGroups(days), [days]);
   const dividerMap = useMemo(
     () => (periods?.length ? buildDividerMap(periods) : new Map()),
@@ -113,8 +114,11 @@ export default function SchoolYearCalendar({ days, schoolYearName, classId, deta
               const divider = dividerMap.get(week.monday);
               return (
                 <div key={week.isoWeek}>
-                  {divider && (
-                    <PeriodDivider quarter={divider.quarter} semester={divider.semester} />
+                  {divider && (showQuarterDividers || divider.semester) && (
+                    <PeriodDivider
+                      quarter={showQuarterDividers ? divider.quarter : undefined}
+                      semester={divider.semester}
+                    />
                   )}
                   <div className="grid grid-cols-[3rem_1fr] gap-2 items-center">
                     {/* ISO week number — also links to that week */}

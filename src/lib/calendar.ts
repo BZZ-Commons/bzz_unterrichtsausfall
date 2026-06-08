@@ -11,7 +11,7 @@ export function isoToUntisDate(iso: string): number {
   return parseInt(iso.replace(/-/g, ''), 10);
 }
 
-function parseUntisDate(date: number): Date {
+export function parseUntisDate(date: number): Date {
   const s = date.toString();
   return new Date(
     parseInt(s.slice(0, 4), 10),

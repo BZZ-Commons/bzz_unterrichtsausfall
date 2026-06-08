@@ -48,6 +48,9 @@ export function normalize(name: string): string {
 /** Detect whether a class name belongs to the IA (Informatik Applikationsentwicklung) track. */
 export const isIAClass = (name: string): boolean => /^IA\d+/i.test(name);
 
+/** Detect whether a class name belongs to the ME (Mediamatik) track. */
+export const isMEClass = (name: string): boolean => /^ME\d+/i.test(name);
+
 /** Parse an IA class name into its year and single-letter suffix, or null. */
 function parseIAName(name: string): { year: string; suffix: string } | null {
   const m = name.match(/^IA(\d+)\s*([a-z])$/i);

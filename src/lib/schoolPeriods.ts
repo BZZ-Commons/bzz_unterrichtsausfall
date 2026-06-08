@@ -1,6 +1,7 @@
-import { format } from 'date-fns';
+import { format, startOfISOWeek, addDays } from 'date-fns';
 import type { WebUntis } from 'webuntis';
 import type { SchoolPeriod, UntisLesson, UntisSchoolYear } from '@/src/types';
+import { parseUntisDate } from '@/src/lib/calendar';
 
 type RawLesson = UntisLesson & { startTime?: number };
 
@@ -9,44 +10,35 @@ function untisDateToIso(date: number): string {
   return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
 }
 
-/**
- * Fetch Q1–Q4 and Semester 1/2 boundaries for a school year.
- *
- * Strategy: find the IA 1st-year class (IA{YY} a) for this school year
- * and read its morning timetable. The morning subject changes 4× per year —
- * each subject run corresponds to a quarter.
- *
- * Returns [] when data is unavailable (no IA class, < 4 subjects).
- */
-export async function fetchSchoolPeriods(
-  untis: WebUntis,
-  schoolYear: UntisSchoolYear,
-): Promise<SchoolPeriod[]> {
-  const yearSuffix = String(schoolYear.startDate.getFullYear()).slice(-2);
-  const classes = (await untis.getClasses(true, schoolYear.id)) as Array<{
-    id: number;
-    name: string;
-    active: boolean;
-  }>;
+// Monday of the calendar week AFTER the given untis date
+function nextWeekMonday(untisDate: number): string {
+  return format(startOfISOWeek(addDays(parseUntisDate(untisDate), 7)), 'yyyy-MM-dd');
+}
 
-  // "IA{YY} a" — the 1st-year IA section that has the quarterly morning subject
-  const iaClass = classes.find(
+function findIaClass(
+  classes: Array<{ id: number; name: string; active: boolean }>,
+  yearSuffix: string,
+): { id: number; name: string } | undefined {
+  return classes.find(
     (c) =>
       c.active &&
       new RegExp(`^IA${yearSuffix}\\b`, 'i').test(c.name) &&
       /\ba\b/i.test(c.name),
   );
+}
 
-  if (!iaClass) return [];
-
+async function extractSubjectRanges(
+  untis: WebUntis,
+  classId: number,
+  schoolYear: UntisSchoolYear,
+): Promise<Array<{ first: number; last: number }>> {
   const lessons = (await untis.getTimetableForRange(
     schoolYear.startDate,
     schoolYear.endDate,
-    iaClass.id,
+    classId,
     1, // WebUntis.TYPES.CLASS
   )) as RawLesson[];
 
-  // Non-cancelled morning lessons (≤ 09:00) that carry a subject
   const morning = lessons.filter(
     (l) =>
       l.code !== 'cancelled' &&
@@ -56,7 +48,6 @@ export async function fetchSchoolPeriods(
       (l.su?.length ?? 0) > 0,
   );
 
-  // Group by subject → date range [first, last]
   const subjectMap = new Map<string, { first: number; last: number }>();
   for (const l of morning) {
     const subj = l.su![0].name;
@@ -68,21 +59,68 @@ export async function fetchSchoolPeriods(
     }
   }
 
-  // Sort subjects by first occurrence → Q1 … Q4
-  const subjects = [...subjectMap.values()]
+  return [...subjectMap.values()]
     .sort((a, b) => a.first - b.first)
     .slice(0, 4);
+}
 
-  if (subjects.length < 2) return [];
+/**
+ * Fetch Q1–Q4 and Semester 1/2 boundaries for a school year.
+ *
+ * Validates via two IA classes:
+ *   - IA{YY} a   — 1st-year class (primary)
+ *   - IA{YY-1} a — 2nd-year class (cross-validation)
+ *
+ * Q boundaries snap to Monday of the next calendar week after the previous
+ * quarter's last lesson. When both classes have 4 quarters, uses the later
+ * last-date per quarter (the quarter ends when both classes finish the module).
+ */
+export async function fetchSchoolPeriods(
+  untis: WebUntis,
+  schoolYear: UntisSchoolYear,
+): Promise<SchoolPeriod[]> {
+  const suffix1 = String(schoolYear.startDate.getFullYear()).slice(-2);      // "26" for 2026/27
+  const suffix2 = String(schoolYear.startDate.getFullYear() - 1).slice(-2); // "25" for 2026/27
+
+  const classes = (await untis.getClasses(true, schoolYear.id)) as Array<{
+    id: number;
+    name: string;
+    active: boolean;
+  }>;
+
+  const class1 = findIaClass(classes, suffix1); // IA26 a (1st year)
+  const class2 = findIaClass(classes, suffix2); // IA25 a (2nd year)
+
+  if (!class1 && !class2) return [];
+
+  const [ranges1, ranges2] = await Promise.all([
+    class1 ? extractSubjectRanges(untis, class1.id, schoolYear) : Promise.resolve([]),
+    class2 ? extractSubjectRanges(untis, class2.id, schoolYear) : Promise.resolve([]),
+  ]);
+
+  // Both found 4 quarters → merge (use the later last-date per position);
+  // otherwise prefer whichever has 4, then whichever has ≥ 2 (class1 first).
+  const subjects =
+    ranges1.length === 4 && ranges2.length === 4
+      ? ranges1.map((r1, i) => ({
+          first: Math.min(r1.first, ranges2[i].first),
+          last: Math.max(r1.last, ranges2[i].last),
+        }))
+      : ([ranges1, ranges2].find((r) => r.length === 4) ??
+         [ranges1, ranges2].find((r) => r.length >= 2) ??
+         null);
+
+  if (!subjects) return [];
 
   const yearStart = format(schoolYear.startDate, 'yyyy-MM-dd');
   const yearEnd = format(schoolYear.endDate, 'yyyy-MM-dd');
 
+  // Q boundaries: Q1 anchors to school year start; Q2+ start Monday of the
+  // next calendar week after the previous quarter's last lesson.
   const quarters: SchoolPeriod[] = subjects.map((range, i) => ({
     name: `Q${i + 1}`,
     type: 'quarter',
-    // Q1 anchors to school year start; Q4 anchors to school year end
-    startDate: i === 0 ? yearStart : untisDateToIso(range.first),
+    startDate: i === 0 ? yearStart : nextWeekMonday(subjects[i - 1].last),
     endDate: i === subjects.length - 1 ? yearEnd : untisDateToIso(range.last),
   }));
 
