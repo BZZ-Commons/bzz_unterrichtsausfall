@@ -13,7 +13,7 @@ export const PARTIAL_CANCEL_STYLE: DayStyle = {
 export const DAY_STYLES: Record<DayType, DayStyle> = {
   normal:         { cell: 'bg-emerald-100', text: 'text-emerald-800' },
   unterrichtsausfall:   { cell: 'bg-orange-200',  text: 'text-orange-800' },
-  veranstaltung:  { cell: 'bg-teal-200',    text: 'text-teal-800' },
+  veranstaltung:  { cell: 'bg-emerald-200',  text: 'text-emerald-800' },
   'no-lessons':   { cell: 'bg-slate-50',    text: 'text-slate-300' },
   ferien:         { cell: 'bg-violet-200',  text: 'text-violet-800' },
   weekend:        { cell: 'bg-slate-50',    text: 'text-slate-300' },
