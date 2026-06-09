@@ -3,6 +3,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { UntisClass } from '@/src/types';
 
+const LISTBOX_ID = 'class-selector-listbox';
+const LABEL_ID = 'class-selector-label';
+const optionId = (id: number): string => `class-option-${id}`;
+
 interface ClassSelectorProps {
   classes: UntisClass[];
   selectedId: number | null;
@@ -114,7 +118,7 @@ export default function ClassSelector({
 
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-      <label className="text-sm font-medium text-slate-700 shrink-0">
+      <label id={LABEL_ID} className="text-sm font-medium text-slate-700 shrink-0">
         Klasse auswählen
       </label>
 
@@ -156,6 +160,16 @@ export default function ClassSelector({
               <input
                 ref={inputRef}
                 type="text"
+                role="combobox"
+                aria-labelledby={LABEL_ID}
+                aria-expanded={open}
+                aria-controls={LISTBOX_ID}
+                aria-autocomplete="list"
+                aria-activedescendant={
+                  activeIndex >= 0 && filtered[activeIndex]
+                    ? optionId(filtered[activeIndex].id)
+                    : undefined
+                }
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value);
@@ -171,7 +185,9 @@ export default function ClassSelector({
             {/* List */}
             <ul
               ref={listRef}
+              id={LISTBOX_ID}
               role="listbox"
+              aria-labelledby={LABEL_ID}
               className="max-h-64 overflow-y-auto py-1"
             >
               {filtered.length === 0 ? (
@@ -186,6 +202,7 @@ export default function ClassSelector({
                   return (
                     <li
                       key={c.id}
+                      id={optionId(c.id)}
                       role="option"
                       aria-selected={isSelected}
                       onMouseEnter={() => setActiveIndex(i)}

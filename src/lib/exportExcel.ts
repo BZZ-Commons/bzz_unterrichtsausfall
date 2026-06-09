@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import { parseISO, format, getISODay } from 'date-fns';
 import { DOW_LABELS } from '@/src/lib/calendar-layout';
 import type { CalendarDay, DayType } from '@/src/types';
@@ -13,12 +12,16 @@ const TYPE_LABELS: Record<DayType, string> = {
   'out-of-year': '',
 };
 
-export function exportCalendarToExcel(
+export async function exportCalendarToExcel(
   days: CalendarDay[],
   className: string,
   schoolYearName: string,
   detailsMode = false,
-): void {
+): Promise<void> {
+  // Loaded on demand — xlsx is ~400 KB+ and export is a rare action, so it
+  // must not weigh down the initial client bundle.
+  const XLSX = await import('xlsx');
+
   const COLUMNS = [
     { key: 'Datum',       wch: 12, detailsOnly: false },
     { key: 'Wochentag',   wch: 10, detailsOnly: false },
