@@ -6,6 +6,9 @@ import {
   iaNeedsDialog,
   buildClassMap,
   getIAVariants,
+  isIAClass,
+  isMEClass,
+  isIMClass,
 } from '@/src/lib/classGroups';
 import type { UntisClass } from '@/src/types';
 
@@ -13,6 +16,23 @@ import type { UntisClass } from '@/src/types';
 
 const makeClass = (id: number, name: string): UntisClass => ({
   id, name, longName: '', active: true,
+});
+
+// ─── track detection ──────────────────────────────────────────────────────────
+
+describe('class track detection', () => {
+  it('detects IA, ME and IM classes by prefix', () => {
+    expect(isIAClass('IA26 a')).toBe(true);
+    expect(isMEClass('ME24')).toBe(true);
+    expect(isIMClass('IM23')).toBe(true);
+  });
+
+  it('does not cross-match between tracks or non-numeric prefixes', () => {
+    expect(isIMClass('IA26')).toBe(false);
+    expect(isMEClass('IM23')).toBe(false);
+    expect(isIMClass('IM')).toBe(false);
+    expect(isIMClass('KV23')).toBe(false);
+  });
 });
 
 // ─── getCompanionNames ────────────────────────────────────────────────────────

@@ -12,7 +12,7 @@ import AggregatedCalendar from '@/components/AggregatedCalendar';
 import DayDetailsDialog from '@/components/DayDetailsDialog';
 import ExportButton from '@/components/ExportButton';
 import DetailsToggle from '@/components/DetailsToggle';
-import { isIAClass, isMEClass, getIAVariants, normalize } from '@/src/lib/classGroups';
+import { isIAClass, isMEClass, isIMClass, getIAVariants, normalize } from '@/src/lib/classGroups';
 import { findSchoolYearByShort, schoolYearShort } from '@/src/lib/schoolYear';
 import type {
   AggregatedCalendarData,
@@ -481,7 +481,11 @@ export default function HomePage() {
               classId={selectedClassId}
               detailsMode={detailsMode}
               periods={periods}
-              showQuarterDividers={isIAClass(selectedClass?.name ?? '') || isMEClass(selectedClass?.name ?? '')}
+              showQuarterDividers={
+                isIAClass(selectedClass?.name ?? '') ||
+                isMEClass(selectedClass?.name ?? '') ||
+                isIMClass(selectedClass?.name ?? '')
+              }
             />
           </div>
         )}
