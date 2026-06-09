@@ -4,6 +4,7 @@ import { withUntisClient, resolveSchoolyear, mapWithConcurrency } from '@/src/li
 import { classifyDays, deduplicateLessons, buildHolidayDateMap } from '@/src/lib/calendar';
 import { aggregateClassDays, type PerClassClassification } from '@/src/lib/aggregate';
 import { listActiveClassesEnriched } from '@/src/lib/classes-server';
+import { groupClassesByPlan } from '@/src/lib/planGroups';
 import type {
   AggregatedCalendarData,
   UntisHoliday,
@@ -94,21 +95,26 @@ export async function GET(request: Request): Promise<NextResponse> {
       const lessonsById = new Map<number, UntisLesson[]>();
       uniqueIds.forEach((id, idx) => lessonsById.set(id, lessonsPerId[idx] ?? []));
 
-      // For each primary class: merge its self+companion lessons and classify.
-      // Skip classes with zero lessons across the entire year — these are inactive
+      // Collapse classes that share a timetable into one "plan" group so the
+      // overview counts each timetable once instead of listing every companion
+      // (e.g. ME24 a + AB24 a, or IA24 a + BM24 a + AB24 c). A group's plan is
+      // the union of its member classes' OWN timetables.
+      const groups = groupClassesByPlan(classes);
+
+      // For each group: merge its members' lessons and classify.
+      // Skip groups with zero lessons across the entire year — these are inactive
       // (often electives or placeholder classes) and would otherwise pollute the
       // aggregate, since `determineSchoolDays` falls back to "all weekdays" when
       // no lessons exist, turning every weekday into `schulausfall`.
-      const perClass: PerClassClassification[] = classes
-        .map((c) => {
-          const ids = c.fetchIds ?? [c.id];
-          const merged = deduplicateLessons(ids.map((id) => lessonsById.get(id) ?? []));
-          return { class: c, merged };
+      const perClass: PerClassClassification[] = groups
+        .map((g) => {
+          const merged = deduplicateLessons(g.memberIds.map((id) => lessonsById.get(id) ?? []));
+          return { group: g, merged };
         })
         .filter(({ merged }) => merged.length > 0)
-        .map(({ class: c, merged }) => ({
-          className: c.name,
-          classId: c.id,
+        .map(({ group: g, merged }) => ({
+          className: g.representative.name,
+          classId: g.representative.id,
           days: classifyDays(schoolYear, holidays, merged),
         }));
 

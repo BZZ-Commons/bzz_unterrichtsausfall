@@ -7,15 +7,8 @@ import {
   getIAYearsWithC,
   iaNeedsDialog,
 } from '@/src/lib/classGroups';
+import { matchesAllowedPrefix, compareClassPriority } from '@/src/lib/classPrefixes';
 import type { UntisClass } from '@/src/types';
-
-const PREFIX_ORDER = ['IA', 'IM', 'KV', 'ME', 'FB', 'AB', 'BM'];
-
-function prefixRank(name: string): number {
-  const prefix = name.match(/^[A-Za-z]+/)?.[0]?.toUpperCase() ?? '';
-  const idx = PREFIX_ORDER.findIndex((p) => prefix.startsWith(p));
-  return idx === -1 ? PREFIX_ORDER.length : idx;
-}
 
 /**
  * Fetch the active classes for a school year and enrich each with
@@ -30,18 +23,13 @@ export async function listActiveClassesEnriched(
   schoolYearId: number,
 ): Promise<UntisClass[]> {
   const raw = (await untis.getClasses(true, schoolYearId)) as UntisClass[];
-  const active = raw.filter(
-    (c) => c.active && PREFIX_ORDER.some((p) => c.name.toUpperCase().startsWith(p)),
-  );
+  const active = raw.filter((c) => c.active && matchesAllowedPrefix(c.name));
 
   const classMap = buildClassMap(active);
   const iaYearsWithC = getIAYearsWithC(active);
 
   return active
-    .sort((a, b) => {
-      const rankDiff = prefixRank(a.name) - prefixRank(b.name);
-      return rankDiff !== 0 ? rankDiff : a.name.localeCompare(b.name);
-    })
+    .sort(compareClassPriority)
     .map((c): UntisClass => {
       if (isIAClass(c.name) && iaNeedsDialog(c.name, iaYearsWithC)) {
         return { ...c, companionNames: [], fetchIds: [c.id] };

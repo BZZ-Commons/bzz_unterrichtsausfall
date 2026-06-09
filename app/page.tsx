@@ -183,7 +183,8 @@ export default function HomePage() {
     if (yId == null) return;
 
     // Serve from cache first — the all-classes fetch is slow (30–60 s).
-    const cacheKey = `calendar-data-all-${yId}`;
+    // The `-v2` suffix invalidates caches from before plan-group deduplication.
+    const cacheKey = `calendar-data-all-v2-${yId}`;
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
       try {
