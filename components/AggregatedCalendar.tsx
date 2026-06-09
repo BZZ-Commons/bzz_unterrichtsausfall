@@ -103,7 +103,12 @@ export default function AggregatedCalendar({
 
   return (
     <div className="space-y-8">
-      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-sm py-2 border-b border-slate-100">
+      {/* Sticky weekday header — `--sticky-stack-top` (set by the page) offsets
+          it below the sticky card header so the two don't overlap. */}
+      <div
+        className="sticky z-10 bg-white/90 backdrop-blur-sm py-2 border-b border-slate-100"
+        style={{ top: 'var(--sticky-stack-top, 0px)' }}
+      >
         <div className="grid grid-cols-[3rem_1fr] gap-2">
           <div className="text-xs text-slate-400 text-right pr-1 pt-1">KW</div>
           <div className="grid grid-cols-7 gap-1">

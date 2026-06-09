@@ -14,6 +14,7 @@ import ExportButton from '@/components/ExportButton';
 import DetailsToggle from '@/components/DetailsToggle';
 import { isIAClass, isMEClass, isIMClass, getIAVariants, normalize } from '@/src/lib/classGroups';
 import { findSchoolYearByShort, schoolYearShort } from '@/src/lib/schoolYear';
+import { useMeasuredHeight } from '@/src/lib/useMeasuredHeight';
 import type {
   AggregatedCalendarData,
   AggregatedDay,
@@ -34,6 +35,11 @@ async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
 
 const isAbortError = (err: unknown): boolean =>
   err instanceof DOMException && err.name === 'AbortError';
+
+// Card header (title + actions + legend) — pinned on scroll above the calendar's
+// own sticky weekday row. Shared verbatim by the single- and aggregated-view cards.
+const STICKY_CARD_HEADER_CLASS =
+  'sticky top-0 z-20 bg-white flex flex-col sm:flex-row sm:items-center gap-3 mb-6 pb-4 border-b border-slate-100';
 
 function pickDefaultSchoolYearId(years: SchoolYearSummary[]): number | null {
   const today = Date.now();
@@ -345,6 +351,14 @@ export default function HomePage() {
     [iaDialogClass, classes],
   );
 
+  // The card header (title + legend) is made sticky on scroll. Its height is
+  // measured so the calendar's own sticky weekday row can stack directly below
+  // it via the inherited `--sticky-stack-top` CSS variable.
+  const [stickyHeaderRef, stickyHeaderHeight] = useMeasuredHeight();
+  const stickyStackStyle = {
+    '--sticky-stack-top': `${stickyHeaderHeight}px`,
+  } as React.CSSProperties;
+
   const showSingleEmptyState =
     viewMode === 'single' && !selectedClassId && !calendarLoading;
   const showSingleCalendar =
@@ -450,8 +464,8 @@ export default function HomePage() {
         )}
 
         {showSingleCalendar && calendarData && selectedClassId != null && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6" style={stickyStackStyle}>
+            <div ref={stickyHeaderRef} className={STICKY_CARD_HEADER_CLASS}>
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
                   {selectedClass?.name}
@@ -491,8 +505,8 @@ export default function HomePage() {
         )}
 
         {showAggregatedCalendar && aggregatedData && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6" style={stickyStackStyle}>
+            <div ref={stickyHeaderRef} className={STICKY_CARD_HEADER_CLASS}>
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
                   Alle Klassen — Gesamtübersicht
