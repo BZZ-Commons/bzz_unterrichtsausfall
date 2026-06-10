@@ -1,4 +1,5 @@
 import '../src/index.css';
+import SiteFooter from '@/components/SiteFooter';
 
 export const metadata = {
   title: 'Unterrichtsausfälle – BZZ',
@@ -8,7 +9,10 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="de">
-      <body>{children}</body>
+      <body>
+        {children}
+        <SiteFooter />
+      </body>
     </html>
   );
 }
