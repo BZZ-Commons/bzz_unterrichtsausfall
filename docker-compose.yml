@@ -1,20 +1,9 @@
 name: unterrichtsausfaelle
 
-# Secrets are read from individual files in ./secrets/ (one value per file, no key=value).
-# Run `./scripts/init-secrets.sh` to create them, or create manually:
-#   echo -n 'value' > secrets/webuntis_school
-#   echo -n 'value' > secrets/webuntis_username
-#   echo -n 'value' > secrets/webuntis_password
-#   echo -n 'value' > secrets/webuntis_base_url
-secrets:
-  webuntis_school:
-    file: ./secrets/webuntis_school
-  webuntis_username:
-    file: ./secrets/webuntis_username
-  webuntis_password:
-    file: ./secrets/webuntis_password
-  webuntis_base_url:
-    file: ./secrets/webuntis_base_url
+# Runtime config is read from a local .env file (one KEY=VALUE per line, gitignored).
+# Create it from .env.example:
+#   cp .env.example .env  &&  edit the four WEBUNTIS_* values
+# The same .env scheme is used on deplo.io (there the vars are set via the Cockpit UI).
 
 services:
   app:
@@ -24,11 +13,7 @@ services:
     ports:
       - "127.0.0.1:3002:3000"
     restart: always
-    secrets:
-      - webuntis_school
-      - webuntis_username
-      - webuntis_password
-      - webuntis_base_url
+    env_file: .env
 
     # ── Security hardening ────────────────────────────────────────────────────
     security_opt:
