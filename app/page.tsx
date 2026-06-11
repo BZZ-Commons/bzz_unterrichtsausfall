@@ -312,6 +312,12 @@ export default function HomePage() {
     ? classes.find((c) => c.id === selectedClassId)
     : undefined;
 
+  // id → name, so a day cell can name the (possibly companion) class it links to.
+  const classNamesById = useMemo(
+    () => new Map(classes.map((c) => [c.id, c.name])),
+    [classes],
+  );
+
   const selectedSchoolYear = useMemo(
     () => schoolYears.find((y) => y.id === selectedSchoolYearId),
     [schoolYears, selectedSchoolYearId],
@@ -508,6 +514,7 @@ export default function HomePage() {
               days={calendarData.days}
               schoolYearName={calendarData.schoolYear.name}
               classId={selectedClassId}
+              classNamesById={classNamesById}
               detailsMode={detailsMode}
               periods={periods}
               showQuarterDividers={

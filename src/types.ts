@@ -8,16 +8,25 @@ export type DayType =
   | 'out-of-year';
 
 /**
- * Status of one half (Vormittag / Nachmittag) of a split "Halbtag" cell:
+ * Status of one half (Vormittag / Nachmittag) of a split day cell:
  *  - 'lessons'   at least one lesson is held in this half  → green
  *  - 'cancelled' lessons were planned here but all cancelled → orange
  *  - 'none'      nothing was scheduled in this half          → gray
  */
-export type HalfDayPart = 'lessons' | 'cancelled' | 'none';
+export type HalfStatus = 'lessons' | 'cancelled' | 'none';
+
+/** One half (Vormittag/Nachmittag) of a day: its status and the class whose lessons fill it. */
+export interface DayHalf {
+  status: HalfStatus;
+  /** Class owning this half's lessons — links the half to that class's WebUntis week. */
+  classId?: number;
+  /** Schulausfall reason for a 'cancelled' half (e.g. "QV BM & KV"), from an event period. */
+  reason?: string;
+}
 
 export interface HalfDayInfo {
-  morning: HalfDayPart;   // lessons starting before 12:00 — left side of the cell
-  afternoon: HalfDayPart; // lessons starting at/after 12:00 — right side of the cell
+  morning: DayHalf;   // lessons starting before 12:00 — left side of the cell
+  afternoon: DayHalf; // lessons starting at/after 12:00 — right side of the cell
 }
 
 export interface CalendarDay {
@@ -40,12 +49,18 @@ export interface CalendarDay {
    */
   ended?: boolean;
   /**
-   * Present only for "Halbtage": normal school days with fewer than 6 held
-   * lessons whose lessons sit in only one half of the day. Drives a left/right
-   * split cell (Vormittag | Nachmittag). Undefined for full days (≥6 lessons)
-   * and for days whose lessons carry no start time, which render as one cell.
+   * Present when the day cell should be split left/right (Vormittag | Nachmittag) —
+   * because the two halves differ in status (lessons/cancelled/none) or belong to
+   * different classes (e.g. IA in the morning, BM in the afternoon). Each half links
+   * to its own class. Undefined when the whole day is a single cell (see linkClassId).
    */
   halfDay?: HalfDayInfo;
+  /**
+   * Class to link an un-split day cell to — the class whose lessons dominate the day.
+   * For merged views this can be a companion class, not the selected one. Undefined
+   * for days without lessons (the cell then links to the selected class).
+   */
+  linkClassId?: number;
 }
 
 export interface UntisHoliday {
@@ -86,6 +101,8 @@ export interface UntisLesson {
   date: number; // YYYYMMDD
   /** Lesson start as an HHMM number (e.g. 800, 1150, 1335). Splits a day into Vormittag/Nachmittag. */
   startTime?: number;
+  /** Class this lesson was fetched under — set server-side before dedup; identifies the owning class for links. */
+  sourceClassId?: number;
   code?: 'cancelled' | 'irregular' | string;
   /** Subjects. Empty for special-event periods ("Veranstaltung"). */
   su?: { name: string }[];

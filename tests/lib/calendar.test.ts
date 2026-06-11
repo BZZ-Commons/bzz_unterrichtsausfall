@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classifyDays, isoToUntisDate, determineSchoolDays, deduplicateLessons, buildDayTooltip } from '@/src/lib/calendar';
+import { classifyDays, isoToUntisDate, determineSchoolDays, deduplicateLessons, buildDayTooltip, halfStatusLabel } from '@/src/lib/calendar';
 import type { CalendarDay, UntisHoliday, UntisLesson, UntisSchoolYear } from '@/src/types';
 
 // School year: Mon 2025-08-18 → Fri 2025-08-22 (one week, for testing)
@@ -609,53 +609,114 @@ describe('classifyDays — lessonCount', () => {
   });
 });
 
-// ─── half-day split (Halbtag: <6 Lektionen, Vormittag/Nachmittag) ───────────────
+// ─── day split (Vormittag/Nachmittag: status + linked class) ─────────────────────
 
-describe('classifyDays — halfDay (Halbtag split)', () => {
+describe('classifyDays — halfDay split (status + class per half)', () => {
   // startTime is an HHMM number; <1200 = Vormittag, >=1200 = Nachmittag.
-  const at = (startTime: number, code?: string): UntisLesson => ({
+  // cls → sourceClassId, the class a lesson was fetched under.
+  const IA = 4098, BM = 3855;
+  const at = (startTime: number, code?: string, cls?: number): UntisLesson => ({
     id: lessonIdCounter++,
     date: 20250818, // Monday
     startTime,
     code,
+    sourceClassId: cls,
   });
   const mondayOf = (lessons: UntisLesson[]): CalendarDay =>
     classifyDays(SCHOOL_YEAR, [], lessons).find((d) => d.date === '2025-08-18')!;
 
-  it('splits a morning-only half day into lessons | none', () => {
-    const mon = mondayOf([at(800), at(855), at(950), at(1045), at(1140)]); // 5 lessons, all AM
+  it('splits a morning-only half day into lessons | none, carrying the owning class', () => {
+    const mon = mondayOf([at(800, undefined, IA), at(950, undefined, IA), at(1140, undefined, IA)]);
     expect(mon.type).toBe('normal');
-    expect(mon.lessonCount).toBe(5);
-    expect(mon.halfDay).toEqual({ morning: 'lessons', afternoon: 'none' });
+    expect(mon.lessonCount).toBe(3);
+    expect(mon.halfDay).toEqual({ morning: { status: 'lessons', classId: IA }, afternoon: { status: 'none' } });
+    expect(mon.linkClassId).toBeUndefined(); // split days link per half, not per day
   });
 
   it('marks a cancelled afternoon as the orange half (lessons | cancelled)', () => {
-    const mon = mondayOf([at(800), at(900), at(1000), at(1300, 'cancelled'), at(1400, 'cancelled')]);
-    expect(mon.lessonCount).toBe(3);
+    const mon = mondayOf([at(800, undefined, IA), at(900, undefined, IA), at(1300, 'cancelled', IA), at(1400, 'cancelled', IA)]);
+    expect(mon.lessonCount).toBe(2);
     expect(mon.cancelledCount).toBe(2);
-    expect(mon.halfDay).toEqual({ morning: 'lessons', afternoon: 'cancelled' });
+    expect(mon.halfDay).toEqual({ morning: { status: 'lessons', classId: IA }, afternoon: { status: 'cancelled', classId: IA } });
   });
 
   it('handles an afternoon class whose morning was cancelled (cancelled | lessons)', () => {
-    const mon = mondayOf([at(800, 'cancelled'), at(900, 'cancelled'), at(1300), at(1400)]);
-    expect(mon.halfDay).toEqual({ morning: 'cancelled', afternoon: 'lessons' });
+    const mon = mondayOf([at(800, 'cancelled', IA), at(1300, undefined, IA), at(1400, undefined, IA)]);
+    expect(mon.halfDay).toEqual({ morning: { status: 'cancelled', classId: IA }, afternoon: { status: 'lessons', classId: IA } });
   });
 
   it('splits an afternoon-only half day into none | lessons', () => {
-    const mon = mondayOf([at(1300), at(1400), at(1500)]);
-    expect(mon.halfDay).toEqual({ morning: 'none', afternoon: 'lessons' });
+    const mon = mondayOf([at(1300, undefined, IA), at(1400, undefined, IA)]);
+    expect(mon.halfDay).toEqual({ morning: { status: 'none' }, afternoon: { status: 'lessons', classId: IA } });
   });
 
-  it('does NOT split a full day (>=6 lessons) — stays a single green cell', () => {
-    const mon = mondayOf([at(800), at(900), at(1000), at(1300), at(1400), at(1500)]); // 6 lessons
+  it('splits a full day taught by two classes into green|green, each half linking its class', () => {
+    // 4 IA in the morning + 3 BM in the afternoon = 7 held → full day, but a class boundary.
+    const mon = mondayOf([
+      at(800, undefined, IA), at(900, undefined, IA), at(1000, undefined, IA), at(1100, undefined, IA),
+      at(1300, undefined, BM), at(1400, undefined, BM), at(1500, undefined, BM),
+    ]);
     expect(mon.type).toBe('normal');
-    expect(mon.halfDay).toBeUndefined();
+    expect(mon.halfDay).toEqual({ morning: { status: 'lessons', classId: IA }, afternoon: { status: 'lessons', classId: BM } });
   });
 
-  it('does NOT split a short day that still teaches in both halves', () => {
-    const mon = mondayOf([at(800), at(900), at(1000), at(1300), at(1400)]); // 3 AM + 2 PM = 5
+  it('keeps a >=6 day green even when afternoon lessons are cancelled (6-rule overrides orange)', () => {
+    const mon = mondayOf([
+      at(745, undefined, IA), at(830, undefined, IA), at(915, undefined, IA),
+      at(1000, undefined, IA), at(1045, undefined, IA), at(1130, undefined, IA), // 6 held, all AM
+      at(1300, 'cancelled', IA), at(1400, 'cancelled', IA),                       // PM cancelled
+    ]);
+    expect(mon.type).toBe('normal');
+    expect(mon.lessonCount).toBe(6);
+    expect(mon.halfDay).toBeUndefined();
+    expect(mon.linkClassId).toBe(IA);
+  });
+
+  it('does NOT split a full single-class day (>=6, both halves taught)', () => {
+    const mon = mondayOf([at(800, undefined, IA), at(900, undefined, IA), at(1000, undefined, IA), at(1300, undefined, IA), at(1400, undefined, IA), at(1500, undefined, IA)]);
+    expect(mon.halfDay).toBeUndefined();
+    expect(mon.linkClassId).toBe(IA);
+  });
+
+  it('does NOT split a short single-class day that still teaches in both halves', () => {
+    const mon = mondayOf([at(800, undefined, IA), at(900, undefined, IA), at(1000, undefined, IA), at(1300, undefined, IA), at(1400, undefined, IA)]); // 3 + 2 = 5
     expect(mon.lessonCount).toBe(5);
     expect(mon.halfDay).toBeUndefined();
+    expect(mon.linkClassId).toBe(IA);
+  });
+
+  it('attaches the Schulausfall reason (event period) to the cancelled half', () => {
+    // IA morning cancelled with a "QV BM & KV" event; BM teaches in the afternoon.
+    const ev = (startTime: number, lstext: string): UntisLesson => ({
+      id: lessonIdCounter++, date: 20250818, startTime, code: 'irregular', su: [], lstext, sourceClassId: IA,
+    });
+    const mon = mondayOf([
+      at(800, 'cancelled', IA), at(900, 'cancelled', IA), ev(800, 'QV BM & KV'),
+      at(1300, undefined, BM), at(1400, undefined, BM),
+    ]);
+    expect(mon.type).toBe('normal');
+    expect(mon.halfDay).toEqual({
+      morning: { status: 'cancelled', classId: IA, reason: 'QV BM & KV' },
+      afternoon: { status: 'lessons', classId: BM },
+    });
+  });
+
+  it('leaves a cancelled half without an event period reasonless', () => {
+    const mon = mondayOf([at(800, 'cancelled', IA), at(900, 'cancelled', IA), at(1300, undefined, BM)]);
+    expect(mon.halfDay?.morning).toEqual({ status: 'cancelled', classId: IA }); // no reason key
+  });
+
+  it('splits an all-cancelled day from two classes into orange | orange (Ausfalltag)', () => {
+    const mon = mondayOf([at(800, 'cancelled', IA), at(900, 'cancelled', IA), at(1300, 'cancelled', BM), at(1400, 'cancelled', BM)]);
+    expect(mon.type).toBe('unterrichtsausfall');
+    expect(mon.halfDay).toEqual({ morning: { status: 'cancelled', classId: IA }, afternoon: { status: 'cancelled', classId: BM } });
+  });
+
+  it('keeps a single-class all-cancelled day as one cell, linking that class', () => {
+    const mon = mondayOf([at(800, 'cancelled', IA), at(1300, 'cancelled', IA)]);
+    expect(mon.type).toBe('unterrichtsausfall');
+    expect(mon.halfDay).toBeUndefined();
+    expect(mon.linkClassId).toBe(IA);
   });
 
   it('does NOT split when lessons carry no start time (cannot place them)', () => {
@@ -665,8 +726,16 @@ describe('classifyDays — halfDay (Halbtag split)', () => {
   });
 
   it('treats 12:00 as afternoon and 11:59 as morning (noon boundary)', () => {
-    expect(mondayOf([at(1200)]).halfDay).toEqual({ morning: 'none', afternoon: 'lessons' });
-    expect(mondayOf([at(1159)]).halfDay).toEqual({ morning: 'lessons', afternoon: 'none' });
+    expect(mondayOf([at(1200, undefined, IA)]).halfDay).toEqual({ morning: { status: 'none' }, afternoon: { status: 'lessons', classId: IA } });
+    expect(mondayOf([at(1159, undefined, IA)]).halfDay).toEqual({ morning: { status: 'lessons', classId: IA }, afternoon: { status: 'none' } });
+  });
+});
+
+describe('halfStatusLabel', () => {
+  it('maps each half status to its German label', () => {
+    expect(halfStatusLabel('lessons')).toBe('Unterricht');
+    expect(halfStatusLabel('cancelled')).toBe('fällt aus');
+    expect(halfStatusLabel('none')).toBe('frei');
   });
 });
 
@@ -674,18 +743,6 @@ describe('classifyDays — halfDay (Halbtag split)', () => {
 
 describe('buildDayTooltip', () => {
   const baseDay: CalendarDay = { date: '2025-08-18', type: 'normal' };
-
-  it('describes the half-day split (Vormittag/Nachmittag) before the lesson count', () => {
-    expect(
-      buildDayTooltip({ ...baseDay, lessonCount: 5, halfDay: { morning: 'lessons', afternoon: 'none' } }),
-    ).toBe('Vormittag Unterricht · Nachmittag frei, 5 Lektionen');
-  });
-
-  it('shows a cancelled afternoon in the half-day tooltip', () => {
-    expect(
-      buildDayTooltip({ ...baseDay, lessonCount: 3, cancelledCount: 2, halfDay: { morning: 'lessons', afternoon: 'cancelled' } }),
-    ).toBe('Vormittag Unterricht · Nachmittag fällt aus, 3 Lektionen, 2 abgesagt');
-  });
 
   it('returns holiday name when present (wins over everything)', () => {
     const day: CalendarDay = { ...baseDay, holidayName: 'Bundesfeiertag', lessonCount: 4, cancelledCount: 1 };

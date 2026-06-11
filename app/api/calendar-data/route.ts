@@ -47,7 +47,12 @@ export async function GET(request: Request): Promise<NextResponse> {
         ),
       ]);
 
-      const lessons = deduplicateLessons(lessonArrays);
+      // Tag each lesson with the class it was fetched under so a merged day can link
+      // each half to the right class. Dedup keeps first-seen → primary class wins ties.
+      const taggedArrays = lessonArrays.map((arr, i) =>
+        arr.map((l) => ({ ...l, sourceClassId: allClassIds[i] })),
+      );
+      const lessons = deduplicateLessons(taggedArrays);
       const days = classifyDays(schoolYear, holidays, lessons);
 
       return {

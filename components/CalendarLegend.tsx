@@ -12,7 +12,7 @@ interface LegendItem {
 
 const SINGLE_ITEMS: LegendItem[] = [
   { cellClass: DAY_STYLES.normal.cell,        label: 'Normaler Schultag' },
-  { cellClass: '', label: 'Halbtag (nur halber Schultag)', swatchStyle: { background: halfDayBackground({ morning: 'lessons', afternoon: 'none' }) } },
+  { cellClass: '', label: 'Geteilter Tag (Halbtag / zwei Klassen)', swatchStyle: { background: halfDayBackground('lessons', 'none') } },
   { cellClass: DAY_STYLES.veranstaltung.cell, label: 'Veranstaltung' },
   { cellClass: DAY_STYLES.unterrichtsausfall.cell, label: 'Unterrichtsausfall' },
   { cellClass: DAY_STYLES.ferien.cell,        label: 'Schulferien' },

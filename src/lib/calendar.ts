@@ -4,10 +4,16 @@ import { format, addDays, getISODay, getISOWeek, getISOWeekYear } from 'date-fns
 function getWeekKey(date: Date): number {
   return getISOWeekYear(date) * 100 + getISOWeek(date);
 }
-import type { CalendarDay, DayType, HalfDayInfo, HalfDayPart, UntisHoliday, UntisLesson, UntisSchoolYear } from '@/src/types';
+import type { CalendarDay, DayHalf, DayType, HalfDayInfo, HalfStatus, UntisHoliday, UntisLesson, UntisSchoolYear } from '@/src/types';
 
 /** Lessons starting before this HHMM time count as Vormittag (morning, left half). */
 const NOON = 1200;
+
+/**
+ * Days with at least this many held lessons render as a full (green) day —
+ * cancellations and empty halves are suppressed. See computeDaySplit.
+ */
+const FULL_DAY_MIN_LESSONS = 6;
 
 const isMorning = (l: UntisLesson): boolean =>
   typeof l.startTime === 'number' && l.startTime < NOON;
@@ -73,23 +79,25 @@ function getEventText(event: UntisLesson): string | undefined {
   return event.lstext || event.substText;
 }
 
-/** German label for one half of a split "Halbtag" cell. */
-function describeHalf(part: HalfDayPart): string {
-  return part === 'lessons' ? 'Unterricht' : part === 'cancelled' ? 'fällt aus' : 'frei';
+/** Schulausfall reason from an event period, with any "Unterrichtsausfall:" prefix stripped. */
+function eventReason(event: UntisLesson): string | undefined {
+  return getEventText(event)?.replace(/^Unterrichtsausfall:\s*/i, '').trim() || undefined;
+}
+
+/** German label for the status of one half of a split day cell. */
+export function halfStatusLabel(status: HalfStatus): string {
+  return status === 'lessons' ? 'Unterricht' : status === 'cancelled' ? 'fällt aus' : 'frei';
 }
 
 /**
- * Build a human-readable tooltip for a calendar day.
+ * Build a human-readable tooltip for a calendar day. Covers the un-split case
+ * (lesson/cancel counts, holiday, event). Split cells build their per-half
+ * tooltips in the component, where class names are available.
  * Returns undefined when there's nothing meaningful to say (e.g. weekend, no-lessons).
  */
 export function buildDayTooltip(day: CalendarDay): string | undefined {
   if (day.holidayName) return day.holidayName;
   const parts: string[] = [];
-  if (day.halfDay) {
-    parts.push(
-      `Vormittag ${describeHalf(day.halfDay.morning)} · Nachmittag ${describeHalf(day.halfDay.afternoon)}`,
-    );
-  }
   if (day.eventName) parts.push(day.eventName);
   if (day.lessonCount !== undefined && day.lessonCount > 0) {
     const n = day.lessonCount;
@@ -174,34 +182,96 @@ function schoolDaysFromRealLessons(realLessons: UntisLesson[]): Set<number> {
 }
 
 /**
- * For a "Halbtag" — a normal school day with fewer than 6 held lessons that sit in
- * only one half of the day — split it into Vormittag (before 12:00) and Nachmittag
- * (12:00+). Each half is 'lessons' (held → green), 'cancelled' (only cancelled →
- * orange) or 'none' (nothing scheduled → gray).
- *
- * Returns undefined when the day is a full day (≥6 lessons), when both halves are
- * taught (effectively a normal day), or when start times are missing so the lessons
- * can't be placed — in those cases the caller renders a plain green cell.
+ * Dominant source class among a set of lessons: the class contributing the most
+ * lessons. Ties resolve to the first-seen class — and since lessons are merged
+ * primary-class-first, that means the selected (primary) class wins a tie.
  */
-function computeHalfDay(dayLessons: UntisLesson[], lessonCount: number): HalfDayInfo | undefined {
-  if (lessonCount === 0 || lessonCount >= 6) return undefined;
+function dominantClassId(lessons: UntisLesson[]): number | undefined {
+  const counts = new Map<number, number>();
+  const order: number[] = [];
+  for (const l of lessons) {
+    if (typeof l.sourceClassId !== 'number') continue;
+    if (!counts.has(l.sourceClassId)) order.push(l.sourceClassId);
+    counts.set(l.sourceClassId, (counts.get(l.sourceClassId) ?? 0) + 1);
+  }
+  let best: number | undefined;
+  let bestCount = 0;
+  for (const id of order) {
+    const c = counts.get(id) ?? 0;
+    if (c > bestCount) { best = id; bestCount = c; }
+  }
+  return best;
+}
 
-  const held = dayLessons.filter((l) => l.code !== 'cancelled' && !isEventPeriod(l));
-  const heldAM = held.filter(isMorning).length;
-  const heldPM = held.filter(isAfternoon).length;
-  // Every held lesson must be placeable by start time; otherwise we can't trust the
-  // split (e.g. timetable data without start times) → fall back to a single cell.
-  if (heldAM + heldPM !== lessonCount) return undefined;
+/**
+ * Decide how a day with lessons renders: as one cell (→ linkClassId) or split into
+ * Vormittag | Nachmittag (→ halfDay), with each half carrying its owning class.
+ *
+ * Rules:
+ *  - ≥6 held lessons ⇒ full green day. Cancellations/empty halves are suppressed
+ *    (no orange/gray). Only a class boundary between the held halves still splits it
+ *    (green | green) so each half can link to its own class.
+ *  - <6 held lessons ⇒ per-half status: 'lessons' (green) / 'cancelled' (orange) /
+ *    'none' (gray), each with its owning class. Split when the halves differ in
+ *    status OR class; otherwise one cell.
+ *
+ * Lessons whose start time is missing can't be placed; if nothing lands in either
+ * half the day stays a single cell (link only).
+ */
+function computeDaySplit(dayLessons: UntisLesson[]): { halfDay?: HalfDayInfo; linkClassId?: number } {
+  const real = dayLessons.filter((l) => !isEventPeriod(l));
+  const held = real.filter((l) => l.code !== 'cancelled');
+  const cancelled = real.filter((l) => l.code === 'cancelled');
 
-  const cancelled = dayLessons.filter((l) => l.code === 'cancelled');
-  const part = (heldN: number, cancelledN: number): HalfDayPart =>
-    heldN > 0 ? 'lessons' : cancelledN > 0 ? 'cancelled' : 'none';
+  const heldAM = held.filter(isMorning);
+  const heldPM = held.filter(isAfternoon);
 
-  const morning = part(heldAM, cancelled.filter(isMorning).length);
-  const afternoon = part(heldPM, cancelled.filter(isAfternoon).length);
-  // Both halves taught → effectively a normal full day; no split needed.
-  if (morning === 'lessons' && afternoon === 'lessons') return undefined;
-  return { morning, afternoon };
+  // ≥6 held lessons → full green day; only a class boundary between the held halves splits it.
+  if (held.length >= FULL_DAY_MIN_LESSONS) {
+    const amClass = dominantClassId(heldAM);
+    const pmClass = dominantClassId(heldPM);
+    if (amClass !== undefined && pmClass !== undefined && amClass !== pmClass) {
+      return {
+        halfDay: {
+          morning: { status: 'lessons', classId: amClass },
+          afternoon: { status: 'lessons', classId: pmClass },
+        },
+      };
+    }
+    return { linkClassId: dominantClassId(held) };
+  }
+
+  // A Schulausfall reason ("QV BM & KV", …) comes from an event period; attach it to
+  // the cancelled half it falls in, so a split day still shows why lessons are out.
+  const events = dayLessons.filter(isEventPeriod);
+  const dayReason = events.map(eventReason).find(Boolean);
+  const reasonIn = (pred: (l: UntisLesson) => boolean): string | undefined =>
+    events.filter(pred).map(eventReason).find(Boolean) ?? dayReason;
+
+  // <6 held → status per half, with the class owning that half's lessons.
+  const halfOf = (heldH: UntisLesson[], cancelledH: UntisLesson[], pred: (l: UntisLesson) => boolean): DayHalf => {
+    if (heldH.length > 0) return { status: 'lessons', classId: dominantClassId(heldH) };
+    if (cancelledH.length > 0) {
+      const h: DayHalf = { status: 'cancelled', classId: dominantClassId(cancelledH) };
+      const reason = reasonIn(pred);
+      if (reason) h.reason = reason;
+      return h;
+    }
+    return { status: 'none' };
+  };
+  const morning = halfOf(heldAM, cancelled.filter(isMorning), isMorning);
+  const afternoon = halfOf(heldPM, cancelled.filter(isAfternoon), isAfternoon);
+
+  // Nothing could be placed (e.g. lessons without start times) → single cell.
+  if (morning.status === 'none' && afternoon.status === 'none') {
+    return { linkClassId: dominantClassId(real) };
+  }
+
+  // Identical halves (same status AND same class) → one cell.
+  if (morning.status === afternoon.status && morning.classId === afternoon.classId) {
+    return { linkClassId: morning.classId ?? afternoon.classId };
+  }
+  return { halfDay: { morning, afternoon } };
 }
 
 /**
@@ -257,6 +327,7 @@ export function classifyDays(
     let cancelledCount: number | undefined;
     let ended = false;
     let halfDay: HalfDayInfo | undefined;
+    let linkClassId: number | undefined;
 
     if (isoDay >= 6) {
       // Saturday or Sunday
@@ -286,7 +357,7 @@ export function classifyDays(
 
         if (lessonCount > 0) {
           type = 'normal';
-          halfDay = computeHalfDay(dayLessons, lessonCount);
+          ({ halfDay, linkClassId } = computeDaySplit(dayLessons));
         } else if (dayLessons.length > 0) {
           // Only cancelled lessons and/or special events remain.
           // If the only event is an "Unterrichtsausfall" Veranstaltung on a day the
@@ -303,9 +374,13 @@ export function classifyDays(
             // Veranstaltung without "Unterrichtsausfall" prefix → green event day
             type = 'veranstaltung';
             eventName = getEventText(event);
+            linkClassId = dominantClassId(dayLessons);
           } else {
+            // Only cancelled lessons (possibly with an "Unterrichtsausfall" event):
+            // split orange|orange when the cancellations span two classes, else one cell.
             type = 'unterrichtsausfall';
-            if (event) eventName = getEventText(event)?.replace(/^Unterrichtsausfall:\s*/i, '').trim() || undefined;
+            if (event) eventName = eventReason(event);
+            ({ halfDay, linkClassId } = computeDaySplit(dayLessons));
           }
         } else if (schoolDays.has(isoDay)) {
           // No lessons at all on a school day → Unterrichtsausfall.
@@ -328,6 +403,7 @@ export function classifyDays(
     if (cancelledCount !== undefined && cancelledCount > 0) day.cancelledCount = cancelledCount;
     if (ended) day.ended = true;
     if (halfDay !== undefined) day.halfDay = halfDay;
+    if (linkClassId !== undefined) day.linkClassId = linkClassId;
 
     result.push(day);
     current = addDays(current, 1);
