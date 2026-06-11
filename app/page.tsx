@@ -12,8 +12,9 @@ import AggregatedCalendar from '@/components/AggregatedCalendar';
 import DayDetailsDialog from '@/components/DayDetailsDialog';
 import ExportButton from '@/components/ExportButton';
 import DetailsToggle from '@/components/DetailsToggle';
+import DraftNotice from '@/components/DraftNotice';
 import { isIAClass, isMEClass, isIMClass, getIAVariants, normalize } from '@/src/lib/classGroups';
-import { findSchoolYearByShort, schoolYearShort } from '@/src/lib/schoolYear';
+import { findSchoolYearByShort, schoolYearShort, isDraftSchoolYear } from '@/src/lib/schoolYear';
 import { useMeasuredHeight } from '@/src/lib/useMeasuredHeight';
 import type {
   AggregatedCalendarData,
@@ -311,11 +312,20 @@ export default function HomePage() {
     ? classes.find((c) => c.id === selectedClassId)
     : undefined;
 
-  const selectedSchoolYearShort = useMemo(() => {
-    if (selectedSchoolYearId == null) return null;
-    const year = schoolYears.find((y) => y.id === selectedSchoolYearId);
-    return year ? schoolYearShort(year) : null;
-  }, [schoolYears, selectedSchoolYearId]);
+  const selectedSchoolYear = useMemo(
+    () => schoolYears.find((y) => y.id === selectedSchoolYearId),
+    [schoolYears, selectedSchoolYearId],
+  );
+
+  const selectedSchoolYearShort = useMemo(
+    () => (selectedSchoolYear ? schoolYearShort(selectedSchoolYear) : null),
+    [selectedSchoolYear],
+  );
+
+  // The next school year's plan is published early as a draft — warn that the
+  // shown cancellations may still change (until the end of the current year).
+  // Computed inline rather than memoized so it reflects the current date.
+  const showDraftNotice = isDraftSchoolYear(selectedSchoolYear, schoolYears, Date.now());
 
   // Only surface a companion in the header for single-companion merges (length 2).
   // Multi-companion classes (e.g. AB c → IA a+b) fall back to longName.
@@ -418,6 +428,10 @@ export default function HomePage() {
         <div className="mb-6 flex justify-center sm:justify-start">
           <ViewToggle value={viewMode} onChange={handleViewModeChange} />
         </div>
+
+        {showDraftNotice && selectedSchoolYear && (
+          <DraftNotice schoolYearName={selectedSchoolYear.name} />
+        )}
 
         {showSingleEmptyState && (
           <div className="text-center py-24">
