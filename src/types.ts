@@ -7,6 +7,19 @@ export type DayType =
   | 'weekend'
   | 'out-of-year';
 
+/**
+ * Status of one half (Vormittag / Nachmittag) of a split "Halbtag" cell:
+ *  - 'lessons'   at least one lesson is held in this half  → green
+ *  - 'cancelled' lessons were planned here but all cancelled → orange
+ *  - 'none'      nothing was scheduled in this half          → gray
+ */
+export type HalfDayPart = 'lessons' | 'cancelled' | 'none';
+
+export interface HalfDayInfo {
+  morning: HalfDayPart;   // lessons starting before 12:00 — left side of the cell
+  afternoon: HalfDayPart; // lessons starting at/after 12:00 — right side of the cell
+}
+
 export interface CalendarDay {
   date: string;        // 'YYYY-MM-DD'
   type: DayType;
@@ -26,6 +39,13 @@ export interface CalendarDay {
    * Nur in der Gesamtübersicht ausgewertet; die Einzelansicht ignoriert das Feld.
    */
   ended?: boolean;
+  /**
+   * Present only for "Halbtage": normal school days with fewer than 6 held
+   * lessons whose lessons sit in only one half of the day. Drives a left/right
+   * split cell (Vormittag | Nachmittag). Undefined for full days (≥6 lessons)
+   * and for days whose lessons carry no start time, which render as one cell.
+   */
+  halfDay?: HalfDayInfo;
 }
 
 export interface UntisHoliday {
@@ -64,6 +84,8 @@ export interface UntisClass {
 export interface UntisLesson {
   id: number;
   date: number; // YYYYMMDD
+  /** Lesson start as an HHMM number (e.g. 800, 1150, 1335). Splits a day into Vormittag/Nachmittag. */
+  startTime?: number;
   code?: 'cancelled' | 'irregular' | string;
   /** Subjects. Empty for special-event periods ("Veranstaltung"). */
   su?: { name: string }[];

@@ -1,14 +1,18 @@
-import { AGGREGATED_DAY_STYLES, DAY_STYLES, PARTIAL_CANCEL_STYLE } from '@/src/lib/calendar-styles';
+import type { CSSProperties } from 'react';
+import { AGGREGATED_DAY_STYLES, DAY_STYLES, PARTIAL_CANCEL_STYLE, halfDayBackground } from '@/src/lib/calendar-styles';
 
 type LegendVariant = 'single' | 'aggregated';
 
 interface LegendItem {
   cellClass: string;
   label: string;
+  /** Inline background for swatches that can't be expressed as a single Tailwind class (e.g. the split Halbtag). */
+  swatchStyle?: CSSProperties;
 }
 
 const SINGLE_ITEMS: LegendItem[] = [
   { cellClass: DAY_STYLES.normal.cell,        label: 'Normaler Schultag' },
+  { cellClass: '', label: 'Halbtag (nur halber Schultag)', swatchStyle: { background: halfDayBackground({ morning: 'lessons', afternoon: 'none' }) } },
   { cellClass: DAY_STYLES.veranstaltung.cell, label: 'Veranstaltung' },
   { cellClass: DAY_STYLES.unterrichtsausfall.cell, label: 'Unterrichtsausfall' },
   { cellClass: DAY_STYLES.ferien.cell,        label: 'Schulferien' },
@@ -37,9 +41,9 @@ export default function CalendarLegend({ variant = 'single', detailsMode }: Cale
     : detailsMode ? SINGLE_ITEMS_DETAILS : SINGLE_ITEMS;
   return (
     <div className="flex flex-wrap gap-3 text-xs">
-      {items.map(({ cellClass, label }) => (
+      {items.map(({ cellClass, label, swatchStyle }) => (
         <div key={label} className="flex items-center gap-1.5">
-          <span className={`inline-block w-4 h-4 rounded ${cellClass}`} />
+          <span className={`inline-block w-4 h-4 rounded ${cellClass}`} style={swatchStyle} />
           <span className="text-slate-600">{label}</span>
         </div>
       ))}

@@ -1,4 +1,4 @@
-import type { AggregatedDayType, DayType } from '@/src/types';
+import type { AggregatedDayType, DayType, HalfDayInfo, HalfDayPart } from '@/src/types';
 
 interface DayStyle {
   cell: string;
@@ -9,6 +9,25 @@ export const PARTIAL_CANCEL_STYLE: DayStyle = {
   cell: 'bg-pink-200',
   text: 'text-pink-800',
 };
+
+/**
+ * Fill colors for one half of a split "Halbtag" cell. The hex values mirror the
+ * Tailwind palette used elsewhere: emerald-100 (Unterricht), orange-200 (fällt aus),
+ * slate-200 (kein Unterricht geplant). Used as inline gradient stops because a
+ * single element needs two background colors side by side.
+ */
+export const HALF_DAY_COLORS: Record<HalfDayPart, string> = {
+  lessons: '#d1fae5',   // emerald-100
+  cancelled: '#fed7aa', // orange-200
+  none: '#e2e8f0',      // slate-200
+};
+
+/** CSS background for a split Halbtag cell: left half = Vormittag, right half = Nachmittag. */
+export function halfDayBackground(info: HalfDayInfo): string {
+  const left = HALF_DAY_COLORS[info.morning];
+  const right = HALF_DAY_COLORS[info.afternoon];
+  return `linear-gradient(to right, ${left} 0 50%, ${right} 50% 100%)`;
+}
 
 export const DAY_STYLES: Record<DayType, DayStyle> = {
   normal:         { cell: 'bg-emerald-100', text: 'text-emerald-800' },

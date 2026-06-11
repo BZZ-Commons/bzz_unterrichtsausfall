@@ -4,7 +4,15 @@ import { format, addDays, getISODay, getISOWeek, getISOWeekYear } from 'date-fns
 function getWeekKey(date: Date): number {
   return getISOWeekYear(date) * 100 + getISOWeek(date);
 }
-import type { CalendarDay, DayType, UntisHoliday, UntisLesson, UntisSchoolYear } from '@/src/types';
+import type { CalendarDay, DayType, HalfDayInfo, HalfDayPart, UntisHoliday, UntisLesson, UntisSchoolYear } from '@/src/types';
+
+/** Lessons starting before this HHMM time count as Vormittag (morning, left half). */
+const NOON = 1200;
+
+const isMorning = (l: UntisLesson): boolean =>
+  typeof l.startTime === 'number' && l.startTime < NOON;
+const isAfternoon = (l: UntisLesson): boolean =>
+  typeof l.startTime === 'number' && l.startTime >= NOON;
 
 /** Convert 'YYYY-MM-DD' string to YYYYMMDD number */
 export function isoToUntisDate(iso: string): number {
@@ -65,6 +73,11 @@ function getEventText(event: UntisLesson): string | undefined {
   return event.lstext || event.substText;
 }
 
+/** German label for one half of a split "Halbtag" cell. */
+function describeHalf(part: HalfDayPart): string {
+  return part === 'lessons' ? 'Unterricht' : part === 'cancelled' ? 'fällt aus' : 'frei';
+}
+
 /**
  * Build a human-readable tooltip for a calendar day.
  * Returns undefined when there's nothing meaningful to say (e.g. weekend, no-lessons).
@@ -72,6 +85,11 @@ function getEventText(event: UntisLesson): string | undefined {
 export function buildDayTooltip(day: CalendarDay): string | undefined {
   if (day.holidayName) return day.holidayName;
   const parts: string[] = [];
+  if (day.halfDay) {
+    parts.push(
+      `Vormittag ${describeHalf(day.halfDay.morning)} · Nachmittag ${describeHalf(day.halfDay.afternoon)}`,
+    );
+  }
   if (day.eventName) parts.push(day.eventName);
   if (day.lessonCount !== undefined && day.lessonCount > 0) {
     const n = day.lessonCount;
@@ -156,6 +174,37 @@ function schoolDaysFromRealLessons(realLessons: UntisLesson[]): Set<number> {
 }
 
 /**
+ * For a "Halbtag" — a normal school day with fewer than 6 held lessons that sit in
+ * only one half of the day — split it into Vormittag (before 12:00) and Nachmittag
+ * (12:00+). Each half is 'lessons' (held → green), 'cancelled' (only cancelled →
+ * orange) or 'none' (nothing scheduled → gray).
+ *
+ * Returns undefined when the day is a full day (≥6 lessons), when both halves are
+ * taught (effectively a normal day), or when start times are missing so the lessons
+ * can't be placed — in those cases the caller renders a plain green cell.
+ */
+function computeHalfDay(dayLessons: UntisLesson[], lessonCount: number): HalfDayInfo | undefined {
+  if (lessonCount === 0 || lessonCount >= 6) return undefined;
+
+  const held = dayLessons.filter((l) => l.code !== 'cancelled' && !isEventPeriod(l));
+  const heldAM = held.filter(isMorning).length;
+  const heldPM = held.filter(isAfternoon).length;
+  // Every held lesson must be placeable by start time; otherwise we can't trust the
+  // split (e.g. timetable data without start times) → fall back to a single cell.
+  if (heldAM + heldPM !== lessonCount) return undefined;
+
+  const cancelled = dayLessons.filter((l) => l.code === 'cancelled');
+  const part = (heldN: number, cancelledN: number): HalfDayPart =>
+    heldN > 0 ? 'lessons' : cancelledN > 0 ? 'cancelled' : 'none';
+
+  const morning = part(heldAM, cancelled.filter(isMorning).length);
+  const afternoon = part(heldPM, cancelled.filter(isAfternoon).length);
+  // Both halves taught → effectively a normal full day; no split needed.
+  if (morning === 'lessons' && afternoon === 'lessons') return undefined;
+  return { morning, afternoon };
+}
+
+/**
  * Pure function: classify every calendar day of the school year.
  *
  * Day types:
@@ -207,6 +256,7 @@ export function classifyDays(
     let lessonCount: number | undefined;
     let cancelledCount: number | undefined;
     let ended = false;
+    let halfDay: HalfDayInfo | undefined;
 
     if (isoDay >= 6) {
       // Saturday or Sunday
@@ -236,6 +286,7 @@ export function classifyDays(
 
         if (lessonCount > 0) {
           type = 'normal';
+          halfDay = computeHalfDay(dayLessons, lessonCount);
         } else if (dayLessons.length > 0) {
           // Only cancelled lessons and/or special events remain.
           // If the only event is an "Unterrichtsausfall" Veranstaltung on a day the
@@ -276,6 +327,7 @@ export function classifyDays(
     if (lessonCount !== undefined) day.lessonCount = lessonCount;
     if (cancelledCount !== undefined && cancelledCount > 0) day.cancelledCount = cancelledCount;
     if (ended) day.ended = true;
+    if (halfDay !== undefined) day.halfDay = halfDay;
 
     result.push(day);
     current = addDays(current, 1);

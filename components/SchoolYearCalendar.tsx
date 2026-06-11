@@ -3,7 +3,7 @@
 import { memo, useMemo } from 'react';
 import { buildDayTooltip } from '@/src/lib/calendar';
 import { buildMonthGroups, DOW_LABELS } from '@/src/lib/calendar-layout';
-import { DAY_STYLES, PARTIAL_CANCEL_STYLE } from '@/src/lib/calendar-styles';
+import { DAY_STYLES, PARTIAL_CANCEL_STYLE, halfDayBackground } from '@/src/lib/calendar-styles';
 import { PeriodDivider, buildDividerMap } from '@/components/PeriodDivider';
 import type { CalendarDay, SchoolPeriod } from '@/src/types';
 
@@ -24,7 +24,10 @@ const DayCell = memo(function DayCell({ day, href, detailsMode }: DayCellProps) 
     return <div className="h-9 w-full rounded-lg bg-white" />;
   }
 
-  const isPartialCancel = detailsMode && day.type === 'normal' && (day.cancelledCount ?? 0) > 0;
+  // A "Halbtag" splits the cell into Vormittag | Nachmittag via an inline gradient,
+  // and so takes precedence over the whole-cell partial-cancel pink.
+  const half = day.halfDay;
+  const isPartialCancel = !half && detailsMode && day.type === 'normal' && (day.cancelledCount ?? 0) > 0;
   const style = isPartialCancel ? PARTIAL_CANCEL_STYLE : DAY_STYLES[day.type];
   const dayNum = day.date.slice(8); // last 2 chars = day number
 
@@ -34,8 +37,9 @@ const DayCell = memo(function DayCell({ day, href, detailsMode }: DayCellProps) 
     w-full rounded-lg flex flex-col items-center justify-center
     min-h-9 px-0.5 py-1
     text-xs font-medium select-none transition-opacity hover:opacity-70
-    ${style.cell} ${style.text}
+    ${half ? 'text-slate-700' : `${style.cell} ${style.text}`}
   `;
+  const cellStyle = half ? { background: halfDayBackground(half) } : undefined;
 
   if (day.type === 'out-of-year') {
     return <div className={baseClass} />;
@@ -47,6 +51,7 @@ const DayCell = memo(function DayCell({ day, href, detailsMode }: DayCellProps) 
       target="_blank"
       rel="noopener noreferrer"
       title={tooltip}
+      style={cellStyle}
       className={`${baseClass} cursor-pointer`}
     >
       <span>{dayNum}</span>
