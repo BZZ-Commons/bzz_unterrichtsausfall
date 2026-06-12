@@ -4,6 +4,7 @@ import {
   compactDays,
   filterUpcomingCancellations,
   todayInZurich,
+  weekdayOf,
 } from '@/src/lib/mcp/helpers';
 import type { CalendarDay, DayType, UntisClass } from '@/src/types';
 
@@ -189,6 +190,7 @@ describe('compactDays', () => {
     const result = compactDays([day('2025-09-01', 'unterrichtsausfall', { cancelledCount: 4 })]);
     expect(result.days[0]).toStrictEqual({
       date: '2025-09-01',
+      weekday: 'Montag',
       type: 'unterrichtsausfall',
       cancelledCount: 4,
     });
@@ -313,5 +315,16 @@ describe('todayInZurich', () => {
 
   it('uses the Zurich calendar day, not UTC (CEST is UTC+2)', () => {
     expect(todayInZurich(new Date('2026-06-11T23:30:00Z'))).toBe('2026-06-12');
+  });
+});
+
+describe('weekdayOf', () => {
+  it('returns German weekday names for ISO dates', () => {
+    // The dates a consuming LLM once mislabeled as Sundays — all Mondays.
+    expect(weekdayOf('2027-05-31')).toBe('Montag');
+    expect(weekdayOf('2027-06-07')).toBe('Montag');
+    expect(weekdayOf('2027-06-14')).toBe('Montag');
+    expect(weekdayOf('2027-07-06')).toBe('Dienstag');
+    expect(weekdayOf('2027-06-06')).toBe('Sonntag');
   });
 });

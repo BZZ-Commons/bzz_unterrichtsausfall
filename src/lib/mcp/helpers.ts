@@ -18,6 +18,8 @@ import {
 /** A single noteworthy day, with all undefined fields omitted to keep JSON small. */
 export interface CompactDay {
   date: string; // 'YYYY-MM-DD'
+  /** German weekday name ('Montag' … 'Sonntag') — precomputed so LLM clients don't miscalculate it. */
+  weekday: string;
   type: DayType;
   holidayName?: string;
   eventName?: string;
@@ -167,9 +169,16 @@ function buildReason(day: CalendarDay): string | undefined {
   return reasons.length > 0 ? reasons.join(' / ') : undefined;
 }
 
+const WEEKDAY_FORMAT = new Intl.DateTimeFormat('de-CH', { weekday: 'long', timeZone: 'UTC' });
+
+/** German weekday name for an ISO date ('2027-05-31' → 'Montag'). UTC noon avoids TZ edge cases. */
+export function weekdayOf(date: string): string {
+  return WEEKDAY_FORMAT.format(new Date(`${date}T12:00:00Z`));
+}
+
 /** Map a CalendarDay to a CompactDay, building the object conditionally so no undefined keys are emitted. */
 function toCompactDay(day: CalendarDay): CompactDay {
-  const compact: CompactDay = { date: day.date, type: day.type };
+  const compact: CompactDay = { date: day.date, weekday: weekdayOf(day.date), type: day.type };
   if (day.holidayName !== undefined) compact.holidayName = day.holidayName;
   if (day.eventName !== undefined) compact.eventName = day.eventName;
   if (day.lessonCount !== undefined) compact.lessonCount = day.lessonCount;

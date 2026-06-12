@@ -177,7 +177,9 @@ export function registerTools(server: McpServer): void {
         'die Antwort meldet das mit kind "needs-variant" (inkl. Optionen); bei kind "not-found" ' +
         'enthält sie Namensvorschläge. from/to (YYYY-MM-DD) schränken den Zeitraum ein. Die ' +
         'Antwort enthält stats (Anzahl Tage je Typ), ferien (Ferienbereiche) und days (nur ' +
-        'Unterrichtsausfälle, Veranstaltungen und Tage mit einzelnen abgesagten Lektionen).',
+        'Unterrichtsausfälle, Veranstaltungen und Tage mit einzelnen abgesagten Lektionen). ' +
+        'Jeder Tag enthält den korrekten Wochentag im Feld weekday — diesen verwenden, ' +
+        'nicht selbst aus dem Datum berechnen.',
       inputSchema: {
         ...classQueryShape,
         from: isoDate.optional().describe('Zeitraum-Beginn (YYYY-MM-DD), inklusiv'),
@@ -214,7 +216,8 @@ export function registerTools(server: McpServer): void {
         'Europe/Zurich) — beantwortet Fragen wie "Wann fällt das nächste Mal Schule aus?". ' +
         'Klasse per className ODER classId (IA-Klassen ggf. mit variant "bm"/"abu", siehe ' +
         'getClassCalendar). Mit includeVeranstaltung true werden auch Veranstaltungstage ' +
-        '(Schulanlässe ohne regulären Unterricht) aufgeführt.',
+        '(Schulanlässe ohne regulären Unterricht) aufgeführt. Jeder Tag enthält den korrekten ' +
+        'Wochentag im Feld weekday — diesen verwenden, nicht selbst aus dem Datum berechnen.',
       inputSchema: {
         ...classQueryShape,
         includeVeranstaltung: z
