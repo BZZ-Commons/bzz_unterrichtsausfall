@@ -11,7 +11,6 @@ import ViewToggle, { type ViewMode } from '@/components/ViewToggle';
 import AggregatedCalendar from '@/components/AggregatedCalendar';
 import DayDetailsDialog from '@/components/DayDetailsDialog';
 import ExportButton from '@/components/ExportButton';
-import DetailsToggle from '@/components/DetailsToggle';
 import DraftNotice from '@/components/DraftNotice';
 import { isIAClass, isMEClass, isIMClass, getIAVariants } from '@/src/lib/classGroups';
 import { schoolYearShort, isDraftSchoolYear } from '@/src/lib/schoolYear';
@@ -325,7 +324,8 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="sm:ml-auto flex flex-wrap items-center gap-3">
-                <DetailsToggle checked={detailsMode} onChange={setDetailsMode} />
+                {/* Details mode has no UI toggle — it is controlled only via the
+                    `?details=true` URL parameter (see useDeepLink / useUrlSync). */}
                 <ExportButton
                   days={calendarData.days}
                   className={selectedClass?.name ?? ''}
