@@ -6,12 +6,7 @@ import {
   getSchoolPeriodsCached,
   getSchoolYearsCached,
 } from '@/src/lib/mcp/data';
-import {
-  compactDays,
-  filterUpcomingCancellations,
-  resolveClass,
-  todayInZurich,
-} from '@/src/lib/mcp/helpers';
+import { compactDays, filterUpcoming, resolveClass, todayInZurich } from '@/src/lib/mcp/helpers';
 import type { UntisClass } from '@/src/types';
 
 /**
@@ -178,6 +173,9 @@ export function registerTools(server: McpServer): void {
         'enthält sie Namensvorschläge. from/to (YYYY-MM-DD) schränken den Zeitraum ein. Die ' +
         'Antwort enthält stats (Anzahl Tage je Typ), ferien (Ferienbereiche) und days (nur ' +
         'Unterrichtsausfälle, Veranstaltungen und Tage mit einzelnen abgesagten Lektionen). ' +
+        'Semantik der Typen: "unterrichtsausfall" = regulärer Unterricht entfällt (betrifft ' +
+        'immer nur Schultage der Klasse); "veranstaltung" = Schulanlass wie z. B. ein ' +
+        'Sprachaufenthalt, kann auch an Wochentagen ohne regulären Unterricht liegen. ' +
         'Jeder Tag enthält den korrekten Wochentag im Feld weekday — diesen verwenden, ' +
         'nicht selbst aus dem Datum berechnen.',
       inputSchema: {
@@ -212,32 +210,31 @@ export function registerTools(server: McpServer): void {
     {
       title: 'Kommende Unterrichtsausfälle',
       description:
-        'Liefert die kommenden Unterrichtsausfälle einer Klasse ab heute (Zeitzone ' +
-        'Europe/Zurich) — beantwortet Fragen wie "Wann fällt das nächste Mal Schule aus?". ' +
-        'Klasse per className ODER classId (IA-Klassen ggf. mit variant "bm"/"abu", siehe ' +
-        'getClassCalendar). Mit includeVeranstaltung true werden auch Veranstaltungstage ' +
-        '(Schulanlässe ohne regulären Unterricht) aufgeführt. Jeder Tag enthält den korrekten ' +
-        'Wochentag im Feld weekday — diesen verwenden, nicht selbst aus dem Datum berechnen.',
-      inputSchema: {
-        ...classQueryShape,
-        includeVeranstaltung: z
-          .boolean()
-          .optional()
-          .describe('Auch Veranstaltungstage aufführen (Standard: false)'),
-      },
+        'Liefert die kommenden Unterrichtsausfälle und Veranstaltungen einer Klasse ab heute ' +
+        '(Zeitzone Europe/Zurich) — beantwortet Fragen wie "Wann fällt das nächste Mal Schule ' +
+        'aus?". Klasse per className ODER classId (IA-Klassen ggf. mit variant "bm"/"abu", ' +
+        'siehe getClassCalendar). Die Antwort trennt zwei Kategorien: cancellations = ' +
+        'Unterrichtsausfälle (regulärer Unterricht entfällt; betrifft immer nur Schultage der ' +
+        'Klasse) und veranstaltungen = Schulanlässe wie z. B. ein Sprachaufenthalt (können ' +
+        'auch an Wochentagen ohne regulären Unterricht liegen). Jeder Tag enthält den ' +
+        'korrekten Wochentag im Feld weekday — diesen verwenden, nicht selbst aus dem Datum ' +
+        'berechnen.',
+      inputSchema: { ...classQueryShape },
     },
-    async ({ className, classId, schoolyearId, variant, includeVeranstaltung }) => {
+    async ({ className, classId, schoolyearId, variant }) => {
       try {
         const result = await resolveRequestedClass({ className, classId, schoolyearId, variant });
         if (!result.resolved) return result.response;
 
         const data = await getClassCalendarCached(result.fetchIds, schoolyearId ?? null);
         const today = todayInZurich();
+        const { cancellations, veranstaltungen } = filterUpcoming(data.days, today);
         return ok({
           schoolYear: { id: data.schoolYear.id, name: data.schoolYear.name },
           class: { id: result.cls.id, name: result.cls.name },
           today,
-          cancellations: filterUpcomingCancellations(data.days, today, { includeVeranstaltung }),
+          cancellations,
+          veranstaltungen,
         });
       } catch (error: unknown) {
         return fail(`WebUntis-Fehler: ${errorMessage(error)}`);

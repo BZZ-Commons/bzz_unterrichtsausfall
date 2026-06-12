@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   resolveClass,
   compactDays,
-  filterUpcomingCancellations,
+  filterUpcoming,
   todayInZurich,
   weekdayOf,
 } from '@/src/lib/mcp/helpers';
@@ -274,9 +274,9 @@ describe('compactDays', () => {
   });
 });
 
-// ─── filterUpcomingCancellations ──────────────────────────────────────────────
+// ─── filterUpcoming ───────────────────────────────────────────────────────────
 
-describe('filterUpcomingCancellations', () => {
+describe('filterUpcoming', () => {
   const days: CalendarDay[] = [
     day('2026-06-10', 'unterrichtsausfall', { cancelledCount: 4 }), // past
     day('2026-06-12', 'unterrichtsausfall', { cancelledCount: 4 }), // today
@@ -285,22 +285,29 @@ describe('filterUpcomingCancellations', () => {
     day('2026-06-17', 'normal', { lessonCount: 8, cancelledCount: 1 }),
   ];
 
-  it('excludes past days, includes today, excludes ended and veranstaltung by default', () => {
-    const result = filterUpcomingCancellations(days, '2026-06-12');
-    expect(result.map((d) => d.date)).toEqual(['2026-06-12']);
+  it('splits cancellations and veranstaltungen; excludes past and ended days by default', () => {
+    const result = filterUpcoming(days, '2026-06-12');
+    expect(result.cancellations.map((d) => d.date)).toEqual(['2026-06-12']);
+    expect(result.veranstaltungen.map((d) => d.date)).toEqual(['2026-06-16']);
+    expect(result.veranstaltungen[0].reason).toBe('Sporttag');
   });
 
-  it('includes ended days with includeEnded', () => {
-    const result = filterUpcomingCancellations(days, '2026-06-12', { includeEnded: true });
-    expect(result.map((d) => d.date)).toEqual(['2026-06-12', '2026-06-15']);
+  it('includes ended cancellation days with includeEnded', () => {
+    const result = filterUpcoming(days, '2026-06-12', { includeEnded: true });
+    expect(result.cancellations.map((d) => d.date)).toEqual(['2026-06-12', '2026-06-15']);
   });
 
-  it('includes veranstaltung days with includeVeranstaltung', () => {
-    const result = filterUpcomingCancellations(days, '2026-06-12', {
-      includeVeranstaltung: true,
-    });
-    expect(result.map((d) => d.date)).toEqual(['2026-06-12', '2026-06-16']);
-    expect(result[1].reason).toBe('Sporttag');
+  it('keeps veranstaltungen on weekdays without regular lessons (e.g. Sprachaufenthalt)', () => {
+    // A Sprachaufenthalt week may cover weekdays the class never meets — those
+    // days are still 'veranstaltung' and must show up, unlike cancellations
+    // which by definition only exist on school days.
+    const trip = [
+      day('2027-02-08', 'veranstaltung', { eventName: 'Sprachaufenthalt Französisch' }),
+      day('2027-02-09', 'veranstaltung', { eventName: 'Sprachaufenthalt Französisch' }),
+    ];
+    const result = filterUpcoming(trip, '2026-06-12');
+    expect(result.cancellations).toEqual([]);
+    expect(result.veranstaltungen.map((d) => d.date)).toEqual(['2027-02-08', '2027-02-09']);
   });
 });
 

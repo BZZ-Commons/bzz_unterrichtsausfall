@@ -250,27 +250,37 @@ export function compactDays(
   };
 }
 
+export interface UpcomingDays {
+  /** 'unterrichtsausfall' days — regular lessons cancelled, by definition only school days. */
+  cancellations: CompactDay[];
+  /** 'veranstaltung' days — school events (e.g. Sprachaufenthalt) that may also fall on weekdays without regular lessons. */
+  veranstaltungen: CompactDay[];
+}
+
 /**
- * Upcoming cancellation days (date >= todayIso). 'veranstaltung' days are
- * included only with `includeVeranstaltung`; days after a class's school year
- * end (`ended`) only with `includeEnded`.
+ * Upcoming days (date >= todayIso), split by semantics: Unterrichtsausfall
+ * (regular lessons cancelled — only ever affects school days) vs Veranstaltung
+ * (school events such as a Sprachaufenthalt — may also be scheduled on weekdays
+ * the class has no regular lessons). Cancellation days after a class's school
+ * year end (`ended`) are included only with `includeEnded`.
  */
-export function filterUpcomingCancellations(
+export function filterUpcoming(
   days: CalendarDay[],
   todayIso: string,
-  opts?: { includeVeranstaltung?: boolean; includeEnded?: boolean },
-): CompactDay[] {
-  const result: CompactDay[] = [];
+  opts?: { includeEnded?: boolean },
+): UpcomingDays {
+  const cancellations: CompactDay[] = [];
+  const veranstaltungen: CompactDay[] = [];
   for (const day of days) {
     if (day.date < todayIso) continue;
-    const typeMatches =
-      day.type === 'unterrichtsausfall' ||
-      (opts?.includeVeranstaltung === true && day.type === 'veranstaltung');
-    if (!typeMatches) continue;
-    if (day.ended === true && opts?.includeEnded !== true) continue;
-    result.push(toCompactDay(day));
+    if (day.type === 'unterrichtsausfall') {
+      if (day.ended === true && opts?.includeEnded !== true) continue;
+      cancellations.push(toCompactDay(day));
+    } else if (day.type === 'veranstaltung') {
+      veranstaltungen.push(toCompactDay(day));
+    }
   }
-  return result;
+  return { cancellations, veranstaltungen };
 }
 
 /** Today's date as 'YYYY-MM-DD' in the Europe/Zurich timezone. */
