@@ -1,9 +1,9 @@
 import { format, startOfISOWeek, addDays } from 'date-fns';
 import type { WebUntis } from 'webuntis';
-import type { SchoolPeriod, UntisLesson, UntisSchoolYear } from '@/src/types';
+import type { SchoolPeriod, UntisSchoolYear } from '@/src/types';
 import { parseUntisDate } from '@/src/lib/calendar';
-
-type RawLesson = UntisLesson & { startTime?: number };
+import { fetchClassTimetable } from '@/src/lib/webuntis';
+import { parseUntisClasses } from '@/src/lib/untisBoundary';
 
 function untisDateToIso(date: number): string {
   const s = date.toString();
@@ -16,7 +16,7 @@ function nextWeekMonday(untisDate: number): string {
 }
 
 function findIaClass(
-  classes: Array<{ id: number; name: string; active: boolean }>,
+  classes: ReadonlyArray<{ id: number; name: string; active: boolean }>,
   yearSuffix: string,
 ): { id: number; name: string } | undefined {
   return classes.find(
@@ -32,12 +32,7 @@ async function extractSubjectRanges(
   classId: number,
   schoolYear: UntisSchoolYear,
 ): Promise<Array<{ first: number; last: number }>> {
-  const lessons = (await untis.getTimetableForRange(
-    schoolYear.startDate,
-    schoolYear.endDate,
-    classId,
-    1, // WebUntis.TYPES.CLASS
-  )) as RawLesson[];
+  const lessons = await fetchClassTimetable(untis, schoolYear, classId);
 
   const morning = lessons.filter(
     (l) =>
@@ -82,11 +77,10 @@ export async function fetchSchoolPeriods(
   const suffix1 = String(schoolYear.startDate.getFullYear()).slice(-2);      // "26" for 2026/27
   const suffix2 = String(schoolYear.startDate.getFullYear() - 1).slice(-2); // "25" for 2026/27
 
-  const classes = (await untis.getClasses(true, schoolYear.id)) as Array<{
-    id: number;
-    name: string;
-    active: boolean;
-  }>;
+  const classes = parseUntisClasses(
+    await untis.getClasses(true, schoolYear.id),
+    `classes for school year ${schoolYear.id}`,
+  );
 
   const class1 = findIaClass(classes, suffix1); // IA26 a (1st year)
   const class2 = findIaClass(classes, suffix2); // IA25 a (2nd year)

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { withUntisClient, resolveSchoolyear } from '@/src/lib/webuntis';
+import { withUntisClient, resolveSchoolyear, fetchClassTimetable } from '@/src/lib/webuntis';
+import { parseUntisHolidays } from '@/src/lib/untisBoundary';
 import { classifyDays, deduplicateLessons } from '@/src/lib/calendar';
-import type { CalendarData, UntisHoliday, UntisLesson, UntisSchoolYear } from '@/src/types';
+import type { CalendarData, UntisSchoolYear } from '@/src/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,17 +36,13 @@ export async function GET(request: Request): Promise<NextResponse> {
         endDate: new Date(rawSchoolYear.endDate),
       };
 
-      const [holidays, ...lessonArrays] = await Promise.all([
-        untis.getHolidays(true) as Promise<UntisHoliday[]>,
-        ...allClassIds.map(
-          (id) => untis.getTimetableForRange(
-            schoolYear.startDate,
-            schoolYear.endDate,
-            id,
-            1 // WebUntis.TYPES.CLASS
-          ) as Promise<UntisLesson[]>
-        ),
+      // Companion sets are small, so fetch all timetables in parallel.
+      // fetchClassTimetable handles WebUntis rate-limit retries + boundary validation.
+      const [rawHolidays, ...lessonArrays] = await Promise.all([
+        untis.getHolidays(true),
+        ...allClassIds.map((id) => fetchClassTimetable(untis, schoolYear, id)),
       ]);
+      const holidays = parseUntisHolidays(rawHolidays, 'holidays');
 
       // Tag each lesson with the class it was fetched under so a merged day can link
       // each half to the right class. Dedup keeps first-seen → primary class wins ties.
