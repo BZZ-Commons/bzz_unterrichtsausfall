@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { classifyDays, isoToUntisDate, determineSchoolDays, deduplicateLessons, buildDayTooltip, halfStatusLabel } from '@/src/lib/calendar';
+import {
+  classifyDays,
+  isoToUntisDate,
+  determineSchoolDays,
+  deduplicateLessons,
+  buildDayTooltip,
+  halfStatusLabel,
+} from '@/src/lib/calendar';
 import type { CalendarDay, UntisHoliday, UntisLesson, UntisSchoolYear } from '@/src/types';
 
 // School year: Mon 2025-08-18 → Fri 2025-08-22 (one week, for testing)
@@ -7,7 +14,7 @@ const SCHOOL_YEAR: UntisSchoolYear = {
   id: 1,
   name: '2025/2026',
   startDate: new Date(2025, 7, 18), // Aug 18 (Mon)
-  endDate: new Date(2025, 7, 22),   // Aug 22 (Fri)
+  endDate: new Date(2025, 7, 22), // Aug 22 (Fri)
 };
 
 let lessonIdCounter = 1;
@@ -48,10 +55,7 @@ describe('classifyDays', () => {
   });
 
   it('marks days where all lessons are cancelled as "unterrichtsausfall" (0 effective, N cancelled)', () => {
-    const lessons = [
-      makeLesson(20250818, 'cancelled'),
-      makeLesson(20250818, 'cancelled'),
-    ];
+    const lessons = [makeLesson(20250818, 'cancelled'), makeLesson(20250818, 'cancelled')];
     const days = classifyDays(SCHOOL_YEAR, [], lessons);
     const mon = days.find((d) => d.date === '2025-08-18');
     expect(mon?.type).toBe('unterrichtsausfall');
@@ -69,13 +73,15 @@ describe('classifyDays', () => {
   });
 
   it('marks days in a Ferien holiday as "ferien"', () => {
-    const holidays: UntisHoliday[] = [{
-      id: 1,
-      name: 'Herbstferien',
-      longName: '',
-      startDate: 20250818,
-      endDate: 20250822,
-    }];
+    const holidays: UntisHoliday[] = [
+      {
+        id: 1,
+        name: 'Herbstferien',
+        longName: '',
+        startDate: 20250818,
+        endDate: 20250822,
+      },
+    ];
     const days = classifyDays(SCHOOL_YEAR, holidays, []);
     for (const day of days) {
       expect(day.type).toBe('ferien');
@@ -84,13 +90,15 @@ describe('classifyDays', () => {
   });
 
   it('marks short single-day holidays (Feiertag) as "ferien" with the holiday name', () => {
-    const holidays: UntisHoliday[] = [{
-      id: 2,
-      name: 'Bundesfeiertag',
-      longName: '',
-      startDate: 20250818,
-      endDate: 20250818,
-    }];
+    const holidays: UntisHoliday[] = [
+      {
+        id: 2,
+        name: 'Bundesfeiertag',
+        longName: '',
+        startDate: 20250818,
+        endDate: 20250818,
+      },
+    ];
     const days = classifyDays(SCHOOL_YEAR, holidays, []);
     const aug18 = days.find((d) => d.date === '2025-08-18');
     expect(aug18?.type).toBe('ferien');
@@ -103,14 +111,12 @@ describe('classifyDays', () => {
       id: 1,
       name: '2025/2026',
       startDate: new Date(2025, 7, 18), // Mon Aug 18
-      endDate: new Date(2025, 8, 19),   // Fri Sep 19 (5 weeks)
+      endDate: new Date(2025, 8, 19), // Fri Sep 19 (5 weeks)
     };
     // Lessons only on Mon–Thu in first 4 weeks → Friday is not a school day for this class.
     const lessons: UntisLesson[] = [
-      20250818, 20250819, 20250820, 20250821,
-      20250825, 20250826, 20250827, 20250828,
-      20250901, 20250902, 20250903, 20250904,
-      20250908, 20250909, 20250910, 20250911,
+      20250818, 20250819, 20250820, 20250821, 20250825, 20250826, 20250827, 20250828, 20250901,
+      20250902, 20250903, 20250904, 20250908, 20250909, 20250910, 20250911,
     ].map((d) => makeLesson(d));
     // Holiday on Fri Sep 12 — class does NOT have Fridays.
     const holidays: UntisHoliday[] = [
@@ -123,25 +129,29 @@ describe('classifyDays', () => {
   });
 
   it('prefers longName over short name when available', () => {
-    const holidays: UntisHoliday[] = [{
-      id: 5,
-      name: 'kf',
-      longName: 'Karfreitag',
-      startDate: 20250818,
-      endDate: 20250818,
-    }];
+    const holidays: UntisHoliday[] = [
+      {
+        id: 5,
+        name: 'kf',
+        longName: 'Karfreitag',
+        startDate: 20250818,
+        endDate: 20250818,
+      },
+    ];
     const days = classifyDays(SCHOOL_YEAR, holidays, []);
     expect(days[0].holidayName).toBe('Karfreitag');
   });
 
   it('classifies multi-day non-ferien holiday (>3 days) as "ferien"', () => {
-    const holidays: UntisHoliday[] = [{
-      id: 3,
-      name: 'Weihnachten',
-      longName: '',
-      startDate: 20250818,
-      endDate: 20250822, // 5 days → ferien by duration
-    }];
+    const holidays: UntisHoliday[] = [
+      {
+        id: 3,
+        name: 'Weihnachten',
+        longName: '',
+        startDate: 20250818,
+        endDate: 20250822, // 5 days → ferien by duration
+      },
+    ];
     const days = classifyDays(SCHOOL_YEAR, holidays, []);
     for (const day of days) {
       expect(day.type).toBe('ferien');
@@ -149,13 +159,15 @@ describe('classifyDays', () => {
   });
 
   it('holidays take precedence over lessons on same day', () => {
-    const holidays: UntisHoliday[] = [{
-      id: 4,
-      name: 'Feiertag',
-      longName: '',
-      startDate: 20250818,
-      endDate: 20250818,
-    }];
+    const holidays: UntisHoliday[] = [
+      {
+        id: 4,
+        name: 'Feiertag',
+        longName: '',
+        startDate: 20250818,
+        endDate: 20250818,
+      },
+    ];
     const lessons = [makeLesson(20250818)];
     const days = classifyDays(SCHOOL_YEAR, holidays, lessons);
     expect(days[0].type).toBe('ferien'); // holiday wins, shown as ferien (violet)
@@ -168,7 +180,7 @@ describe('classifyDays with extended school year (includes weekend)', () => {
     id: 1,
     name: '2025/2026',
     startDate: new Date(2025, 7, 18), // Mon
-    endDate: new Date(2025, 7, 24),   // Sun (includes Sat + Sun)
+    endDate: new Date(2025, 7, 24), // Sun (includes Sat + Sun)
   };
 
   it('includes weekend days but marks them as "weekend"', () => {
@@ -192,10 +204,9 @@ describe('determineSchoolDays', () => {
   it('detects Mon–Fri when lessons exist on all weekdays in first 4 weeks', () => {
     // 4 weeks: Aug 18–22, Aug 25–29, Sep 1–5, Sep 8–12 (all Mon–Fri)
     const lessons: UntisLesson[] = [
-      20250818, 20250819, 20250820, 20250821, 20250822,
-      20250825, 20250826, 20250827, 20250828, 20250829,
-      20250901, 20250902, 20250903, 20250904, 20250905,
-      20250908, 20250909, 20250910, 20250911, 20250912,
+      20250818, 20250819, 20250820, 20250821, 20250822, 20250825, 20250826, 20250827, 20250828,
+      20250829, 20250901, 20250902, 20250903, 20250904, 20250905, 20250908, 20250909, 20250910,
+      20250911, 20250912,
     ].map((d) => makeLesson(d));
     const result = determineSchoolDays(lessons);
     expect(result).toEqual(new Set([1, 2, 3, 4, 5]));
@@ -204,10 +215,22 @@ describe('determineSchoolDays', () => {
   it('detects only Mon–Thu when class never has Friday lessons in first 4 weeks', () => {
     // First 4 weeks with only Mon–Thu lessons
     const lessons: UntisLesson[] = [
-      20250818, 20250819, 20250820, 20250821, // week 1, no Fri
-      20250825, 20250826, 20250827, 20250828, // week 2, no Fri
-      20250901, 20250902, 20250903, 20250904, // week 3, no Fri
-      20250908, 20250909, 20250910, 20250911, // week 4, no Fri
+      20250818,
+      20250819,
+      20250820,
+      20250821, // week 1, no Fri
+      20250825,
+      20250826,
+      20250827,
+      20250828, // week 2, no Fri
+      20250901,
+      20250902,
+      20250903,
+      20250904, // week 3, no Fri
+      20250908,
+      20250909,
+      20250910,
+      20250911, // week 4, no Fri
     ].map((d) => makeLesson(d));
     const result = determineSchoolDays(lessons);
     expect(result).toEqual(new Set([1, 2, 3, 4])); // no Friday (5)
@@ -227,11 +250,27 @@ describe('determineSchoolDays', () => {
   it('only uses first 4 weeks, ignores later data for school day detection', () => {
     // First 4 weeks: only Mon–Thu; week 5+: Fri also appears
     const lessons: UntisLesson[] = [
-      20250818, 20250819, 20250820, 20250821,
-      20250825, 20250826, 20250827, 20250828,
-      20250901, 20250902, 20250903, 20250904,
-      20250908, 20250909, 20250910, 20250911,
-      20250915, 20250916, 20250917, 20250918, 20250919, // week 5 has Fri — should be ignored
+      20250818,
+      20250819,
+      20250820,
+      20250821,
+      20250825,
+      20250826,
+      20250827,
+      20250828,
+      20250901,
+      20250902,
+      20250903,
+      20250904,
+      20250908,
+      20250909,
+      20250910,
+      20250911,
+      20250915,
+      20250916,
+      20250917,
+      20250918,
+      20250919, // week 5 has Fri — should be ignored
     ].map((d) => makeLesson(d));
     const result = determineSchoolDays(lessons);
     expect(result).toEqual(new Set([1, 2, 3, 4])); // Fri still not a school day
@@ -246,16 +285,14 @@ describe('unterrichtsausfall classification', () => {
     id: 1,
     name: '2025/2026',
     startDate: new Date(2025, 7, 18), // Mon Aug 18
-    endDate: new Date(2025, 8, 19),   // Fri Sep 19 (5 weeks)
+    endDate: new Date(2025, 8, 19), // Fri Sep 19 (5 weeks)
   };
 
   it('marks a defined school day with no lessons as "unterrichtsausfall"', () => {
     // Lessons on Mon–Thu in first 4 weeks, then week 5 Mon is empty
     const lessons: UntisLesson[] = [
-      20250818, 20250819, 20250820, 20250821,
-      20250825, 20250826, 20250827, 20250828,
-      20250901, 20250902, 20250903, 20250904,
-      20250908, 20250909, 20250910, 20250911,
+      20250818, 20250819, 20250820, 20250821, 20250825, 20250826, 20250827, 20250828, 20250901,
+      20250902, 20250903, 20250904, 20250908, 20250909, 20250910, 20250911,
       // week 5: Tue–Thu only, Mon (20250915) has no lessons
       20250916, 20250917, 20250918,
     ].map((d) => makeLesson(d));
@@ -268,10 +305,8 @@ describe('unterrichtsausfall classification', () => {
   it('marks a non-school weekday (no lessons in first 4 weeks) as "no-lessons"', () => {
     // Lessons only Mon–Thu in first 4 weeks; Fri never has lessons
     const lessons: UntisLesson[] = [
-      20250818, 20250819, 20250820, 20250821,
-      20250825, 20250826, 20250827, 20250828,
-      20250901, 20250902, 20250903, 20250904,
-      20250908, 20250909, 20250910, 20250911,
+      20250818, 20250819, 20250820, 20250821, 20250825, 20250826, 20250827, 20250828, 20250901,
+      20250902, 20250903, 20250904, 20250908, 20250909, 20250910, 20250911,
     ].map((d) => makeLesson(d));
 
     const days = classifyDays(LONG_SCHOOL_YEAR, [], lessons);
@@ -294,16 +329,27 @@ describe('classifyDays — ended flag (class finished for the year)', () => {
     id: 1,
     name: '2025/2026',
     startDate: new Date(2025, 7, 18), // Mon Aug 18
-    endDate: new Date(2025, 8, 19),   // Fri Sep 19
+    endDate: new Date(2025, 8, 19), // Fri Sep 19
   };
 
   // Lessons Mon–Thu in weeks 1,2,4; week 3 Monday (20250901) intentionally empty
   // (a mid-year gap); last lesson = week 4 Thursday (20250911); week 5 fully empty.
   const lessons: UntisLesson[] = [
-    20250818, 20250819, 20250820, 20250821, // week 1 Mon–Thu
-    20250825, 20250826, 20250827, 20250828, // week 2 Mon–Thu
-    /* 20250901 gap */ 20250902, 20250903, 20250904, // week 3 Tue–Thu
-    20250908, 20250909, 20250910, 20250911, // week 4 Mon–Thu (last = 20250911)
+    20250818,
+    20250819,
+    20250820,
+    20250821, // week 1 Mon–Thu
+    20250825,
+    20250826,
+    20250827,
+    20250828, // week 2 Mon–Thu
+    /* 20250901 gap */ 20250902,
+    20250903,
+    20250904, // week 3 Tue–Thu
+    20250908,
+    20250909,
+    20250910,
+    20250911, // week 4 Mon–Thu (last = 20250911)
   ].map((d) => makeLesson(d));
 
   it('flags empty school days AFTER the last lesson as ended (still unterrichtsausfall)', () => {
@@ -426,7 +472,7 @@ describe('classifyDays — Veranstaltung (irregular event with no subject)', () 
     // "Unterrichtsausfall" event → not a school day for this class, so no color.
     const lessons: UntisLesson[] = [
       makeLesson(20250818), // Monday: real lesson → school day
-      makeEvent(20250819, 'Unterrichtsausfall BM2'),  // Tuesday: not a school day
+      makeEvent(20250819, 'Unterrichtsausfall BM2'), // Tuesday: not a school day
       makeEvent(20250822, 'Unterrichtsausfall Abt. W'), // Friday: not a school day
     ];
     const days = classifyDays(SCHOOL_YEAR, [], lessons);
@@ -442,8 +488,8 @@ describe('classifyDays — Veranstaltung (irregular event with no subject)', () 
     const multiWeekYear: UntisSchoolYear = {
       id: 1,
       name: '2025/2026',
-      startDate: new Date(2025, 7, 18),  // Aug 18 (Mon)
-      endDate: new Date(2025, 7, 25),    // Aug 25 (Mon, second week)
+      startDate: new Date(2025, 7, 18), // Aug 18 (Mon)
+      endDate: new Date(2025, 7, 25), // Aug 25 (Mon, second week)
     };
     const lessons: UntisLesson[] = [
       makeLesson(20250818), // Mon wk1 → school day
@@ -592,9 +638,7 @@ describe('classifyDays — lessonCount', () => {
   it('lessonCount per day matches IA22a real-world pattern: 4 on Monday, 0 on Tue–Fri (no-lessons)', () => {
     // Mirrors actual probed data for IA22a: ~4 lessons on Mondays only, never mid-week.
     // → determineSchoolDays detects Monday as the only school day; Tue–Fri become 'no-lessons'.
-    const lessons = Array.from({ length: 4 }, (_, i) =>
-      makeLesson(20250818, undefined, 100 + i),
-    );
+    const lessons = Array.from({ length: 4 }, (_, i) => makeLesson(20250818, undefined, 100 + i));
     const days = classifyDays(SCHOOL_YEAR, [], lessons);
     const mon = days.find((d) => d.date === '2025-08-18');
     const tue = days.find((d) => d.date === '2025-08-19');
@@ -614,7 +658,8 @@ describe('classifyDays — lessonCount', () => {
 describe('classifyDays — halfDay split (status + class per half)', () => {
   // startTime is an HHMM number; <1200 = Vormittag, >=1200 = Nachmittag.
   // cls → sourceClassId, the class a lesson was fetched under.
-  const IA = 4098, BM = 3855;
+  const IA = 4098,
+    BM = 3855;
   const at = (startTime: number, code?: string, cls?: number): UntisLesson => ({
     id: lessonIdCounter++,
     date: 20250818, // Monday
@@ -629,42 +674,76 @@ describe('classifyDays — halfDay split (status + class per half)', () => {
     const mon = mondayOf([at(800, undefined, IA), at(950, undefined, IA), at(1140, undefined, IA)]);
     expect(mon.type).toBe('normal');
     expect(mon.lessonCount).toBe(3);
-    expect(mon.halfDay).toEqual({ morning: { status: 'lessons', classId: IA }, afternoon: { status: 'none' } });
+    expect(mon.halfDay).toEqual({
+      morning: { status: 'lessons', classId: IA },
+      afternoon: { status: 'none' },
+    });
     expect(mon.linkClassId).toBeUndefined(); // split days link per half, not per day
   });
 
   it('marks a cancelled afternoon as the orange half (lessons | cancelled)', () => {
-    const mon = mondayOf([at(800, undefined, IA), at(900, undefined, IA), at(1300, 'cancelled', IA), at(1400, 'cancelled', IA)]);
+    const mon = mondayOf([
+      at(800, undefined, IA),
+      at(900, undefined, IA),
+      at(1300, 'cancelled', IA),
+      at(1400, 'cancelled', IA),
+    ]);
     expect(mon.lessonCount).toBe(2);
     expect(mon.cancelledCount).toBe(2);
-    expect(mon.halfDay).toEqual({ morning: { status: 'lessons', classId: IA }, afternoon: { status: 'cancelled', classId: IA } });
+    expect(mon.halfDay).toEqual({
+      morning: { status: 'lessons', classId: IA },
+      afternoon: { status: 'cancelled', classId: IA },
+    });
   });
 
   it('handles an afternoon class whose morning was cancelled (cancelled | lessons)', () => {
-    const mon = mondayOf([at(800, 'cancelled', IA), at(1300, undefined, IA), at(1400, undefined, IA)]);
-    expect(mon.halfDay).toEqual({ morning: { status: 'cancelled', classId: IA }, afternoon: { status: 'lessons', classId: IA } });
+    const mon = mondayOf([
+      at(800, 'cancelled', IA),
+      at(1300, undefined, IA),
+      at(1400, undefined, IA),
+    ]);
+    expect(mon.halfDay).toEqual({
+      morning: { status: 'cancelled', classId: IA },
+      afternoon: { status: 'lessons', classId: IA },
+    });
   });
 
   it('splits an afternoon-only half day into none | lessons', () => {
     const mon = mondayOf([at(1300, undefined, IA), at(1400, undefined, IA)]);
-    expect(mon.halfDay).toEqual({ morning: { status: 'none' }, afternoon: { status: 'lessons', classId: IA } });
+    expect(mon.halfDay).toEqual({
+      morning: { status: 'none' },
+      afternoon: { status: 'lessons', classId: IA },
+    });
   });
 
   it('splits a full day taught by two classes into green|green, each half linking its class', () => {
     // 4 IA in the morning + 3 BM in the afternoon = 7 held → full day, but a class boundary.
     const mon = mondayOf([
-      at(800, undefined, IA), at(900, undefined, IA), at(1000, undefined, IA), at(1100, undefined, IA),
-      at(1300, undefined, BM), at(1400, undefined, BM), at(1500, undefined, BM),
+      at(800, undefined, IA),
+      at(900, undefined, IA),
+      at(1000, undefined, IA),
+      at(1100, undefined, IA),
+      at(1300, undefined, BM),
+      at(1400, undefined, BM),
+      at(1500, undefined, BM),
     ]);
     expect(mon.type).toBe('normal');
-    expect(mon.halfDay).toEqual({ morning: { status: 'lessons', classId: IA }, afternoon: { status: 'lessons', classId: BM } });
+    expect(mon.halfDay).toEqual({
+      morning: { status: 'lessons', classId: IA },
+      afternoon: { status: 'lessons', classId: BM },
+    });
   });
 
   it('keeps a >=6 day green even when afternoon lessons are cancelled (6-rule overrides orange)', () => {
     const mon = mondayOf([
-      at(745, undefined, IA), at(830, undefined, IA), at(915, undefined, IA),
-      at(1000, undefined, IA), at(1045, undefined, IA), at(1130, undefined, IA), // 6 held, all AM
-      at(1300, 'cancelled', IA), at(1400, 'cancelled', IA),                       // PM cancelled
+      at(745, undefined, IA),
+      at(830, undefined, IA),
+      at(915, undefined, IA),
+      at(1000, undefined, IA),
+      at(1045, undefined, IA),
+      at(1130, undefined, IA), // 6 held, all AM
+      at(1300, 'cancelled', IA),
+      at(1400, 'cancelled', IA), // PM cancelled
     ]);
     expect(mon.type).toBe('normal');
     expect(mon.lessonCount).toBe(6);
@@ -673,13 +752,26 @@ describe('classifyDays — halfDay split (status + class per half)', () => {
   });
 
   it('does NOT split a full single-class day (>=6, both halves taught)', () => {
-    const mon = mondayOf([at(800, undefined, IA), at(900, undefined, IA), at(1000, undefined, IA), at(1300, undefined, IA), at(1400, undefined, IA), at(1500, undefined, IA)]);
+    const mon = mondayOf([
+      at(800, undefined, IA),
+      at(900, undefined, IA),
+      at(1000, undefined, IA),
+      at(1300, undefined, IA),
+      at(1400, undefined, IA),
+      at(1500, undefined, IA),
+    ]);
     expect(mon.halfDay).toBeUndefined();
     expect(mon.linkClassId).toBe(IA);
   });
 
   it('does NOT split a short single-class day that still teaches in both halves', () => {
-    const mon = mondayOf([at(800, undefined, IA), at(900, undefined, IA), at(1000, undefined, IA), at(1300, undefined, IA), at(1400, undefined, IA)]); // 3 + 2 = 5
+    const mon = mondayOf([
+      at(800, undefined, IA),
+      at(900, undefined, IA),
+      at(1000, undefined, IA),
+      at(1300, undefined, IA),
+      at(1400, undefined, IA),
+    ]); // 3 + 2 = 5
     expect(mon.lessonCount).toBe(5);
     expect(mon.halfDay).toBeUndefined();
     expect(mon.linkClassId).toBe(IA);
@@ -688,11 +780,20 @@ describe('classifyDays — halfDay split (status + class per half)', () => {
   it('attaches the Schulausfall reason (event period) to the cancelled half', () => {
     // IA morning cancelled with a "QV BM & KV" event; BM teaches in the afternoon.
     const ev = (startTime: number, lstext: string): UntisLesson => ({
-      id: lessonIdCounter++, date: 20250818, startTime, code: 'irregular', su: [], lstext, sourceClassId: IA,
+      id: lessonIdCounter++,
+      date: 20250818,
+      startTime,
+      code: 'irregular',
+      su: [],
+      lstext,
+      sourceClassId: IA,
     });
     const mon = mondayOf([
-      at(800, 'cancelled', IA), at(900, 'cancelled', IA), ev(800, 'QV BM & KV'),
-      at(1300, undefined, BM), at(1400, undefined, BM),
+      at(800, 'cancelled', IA),
+      at(900, 'cancelled', IA),
+      ev(800, 'QV BM & KV'),
+      at(1300, undefined, BM),
+      at(1400, undefined, BM),
     ]);
     expect(mon.type).toBe('normal');
     expect(mon.halfDay).toEqual({
@@ -702,14 +803,26 @@ describe('classifyDays — halfDay split (status + class per half)', () => {
   });
 
   it('leaves a cancelled half without an event period reasonless', () => {
-    const mon = mondayOf([at(800, 'cancelled', IA), at(900, 'cancelled', IA), at(1300, undefined, BM)]);
+    const mon = mondayOf([
+      at(800, 'cancelled', IA),
+      at(900, 'cancelled', IA),
+      at(1300, undefined, BM),
+    ]);
     expect(mon.halfDay?.morning).toEqual({ status: 'cancelled', classId: IA }); // no reason key
   });
 
   it('splits an all-cancelled day from two classes into orange | orange (Ausfalltag)', () => {
-    const mon = mondayOf([at(800, 'cancelled', IA), at(900, 'cancelled', IA), at(1300, 'cancelled', BM), at(1400, 'cancelled', BM)]);
+    const mon = mondayOf([
+      at(800, 'cancelled', IA),
+      at(900, 'cancelled', IA),
+      at(1300, 'cancelled', BM),
+      at(1400, 'cancelled', BM),
+    ]);
     expect(mon.type).toBe('unterrichtsausfall');
-    expect(mon.halfDay).toEqual({ morning: { status: 'cancelled', classId: IA }, afternoon: { status: 'cancelled', classId: BM } });
+    expect(mon.halfDay).toEqual({
+      morning: { status: 'cancelled', classId: IA },
+      afternoon: { status: 'cancelled', classId: BM },
+    });
   });
 
   it('keeps a single-class all-cancelled day as one cell, linking that class', () => {
@@ -726,8 +839,14 @@ describe('classifyDays — halfDay split (status + class per half)', () => {
   });
 
   it('treats 12:00 as afternoon and 11:59 as morning (noon boundary)', () => {
-    expect(mondayOf([at(1200, undefined, IA)]).halfDay).toEqual({ morning: { status: 'none' }, afternoon: { status: 'lessons', classId: IA } });
-    expect(mondayOf([at(1159, undefined, IA)]).halfDay).toEqual({ morning: { status: 'lessons', classId: IA }, afternoon: { status: 'none' } });
+    expect(mondayOf([at(1200, undefined, IA)]).halfDay).toEqual({
+      morning: { status: 'none' },
+      afternoon: { status: 'lessons', classId: IA },
+    });
+    expect(mondayOf([at(1159, undefined, IA)]).halfDay).toEqual({
+      morning: { status: 'lessons', classId: IA },
+      afternoon: { status: 'none' },
+    });
   });
 });
 
@@ -745,7 +864,12 @@ describe('buildDayTooltip', () => {
   const baseDay: CalendarDay = { date: '2025-08-18', type: 'normal' };
 
   it('returns holiday name when present (wins over everything)', () => {
-    const day: CalendarDay = { ...baseDay, holidayName: 'Bundesfeiertag', lessonCount: 4, cancelledCount: 1 };
+    const day: CalendarDay = {
+      ...baseDay,
+      holidayName: 'Bundesfeiertag',
+      lessonCount: 4,
+      cancelledCount: 1,
+    };
     expect(buildDayTooltip(day)).toBe('Bundesfeiertag');
   });
 
@@ -758,21 +882,38 @@ describe('buildDayTooltip', () => {
   });
 
   it('combines effective + cancelled lessons', () => {
-    expect(buildDayTooltip({ ...baseDay, lessonCount: 5, cancelledCount: 2 })).toBe('5 Lektionen, 2 abgesagt');
+    expect(buildDayTooltip({ ...baseDay, lessonCount: 5, cancelledCount: 2 })).toBe(
+      '5 Lektionen, 2 abgesagt',
+    );
   });
 
   it('shows only cancelled when no effective lessons (Schulausfall mit Lektionen)', () => {
-    expect(buildDayTooltip({ ...baseDay, type: 'unterrichtsausfall', lessonCount: 0, cancelledCount: 9 })).toBe('9 abgesagt');
+    expect(
+      buildDayTooltip({
+        ...baseDay,
+        type: 'unterrichtsausfall',
+        lessonCount: 0,
+        cancelledCount: 9,
+      }),
+    ).toBe('9 abgesagt');
   });
 
   it('shows the event name then cancelled count for a Veranstaltung day', () => {
     expect(
-      buildDayTooltip({ ...baseDay, type: 'unterrichtsausfall', eventName: 'Lehrpersonenweiterbildung Abteilung Wirtschaft', lessonCount: 0, cancelledCount: 9 }),
+      buildDayTooltip({
+        ...baseDay,
+        type: 'unterrichtsausfall',
+        eventName: 'Lehrpersonenweiterbildung Abteilung Wirtschaft',
+        lessonCount: 0,
+        cancelledCount: 9,
+      }),
     ).toBe('Lehrpersonenweiterbildung Abteilung Wirtschaft, 9 abgesagt');
   });
 
   it('returns undefined when there is nothing to show (e.g. empty Schulausfall)', () => {
-    expect(buildDayTooltip({ ...baseDay, type: 'unterrichtsausfall', lessonCount: 0 })).toBeUndefined();
+    expect(
+      buildDayTooltip({ ...baseDay, type: 'unterrichtsausfall', lessonCount: 0 }),
+    ).toBeUndefined();
   });
 
   it('returns undefined for a bare weekend/no-lessons day with no counts', () => {

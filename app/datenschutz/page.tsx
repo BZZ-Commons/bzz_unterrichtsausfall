@@ -69,8 +69,7 @@ export default function DatenschutzPage() {
         <h2 className="text-base font-semibold text-slate-900">Ihre Rechte</h2>
         <p>
           Im Rahmen des anwendbaren schweizerischen Datenschutzrechts haben Sie das Recht auf
-          Auskunft, Berichtigung und Löschung Ihrer Personendaten.
-          Wenden Sie sich dazu an{' '}
+          Auskunft, Berichtigung und Löschung Ihrer Personendaten. Wenden Sie sich dazu an{' '}
           <a href="mailto:info@bzz.ch" className="text-indigo-600 hover:underline">
             info@bzz.ch
           </a>

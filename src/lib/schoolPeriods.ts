@@ -20,10 +20,7 @@ function findIaClass(
   yearSuffix: string,
 ): { id: number; name: string } | undefined {
   return classes.find(
-    (c) =>
-      c.active &&
-      new RegExp(`^IA${yearSuffix}\\b`, 'i').test(c.name) &&
-      /\ba\b/i.test(c.name),
+    (c) => c.active && new RegExp(`^IA${yearSuffix}\\b`, 'i').test(c.name) && /\ba\b/i.test(c.name),
   );
 }
 
@@ -54,9 +51,7 @@ async function extractSubjectRanges(
     }
   }
 
-  return [...subjectMap.values()]
-    .sort((a, b) => a.first - b.first)
-    .slice(0, 4);
+  return [...subjectMap.values()].sort((a, b) => a.first - b.first).slice(0, 4);
 }
 
 /**
@@ -74,7 +69,7 @@ export async function fetchSchoolPeriods(
   untis: WebUntis,
   schoolYear: UntisSchoolYear,
 ): Promise<SchoolPeriod[]> {
-  const suffix1 = String(schoolYear.startDate.getFullYear()).slice(-2);      // "26" for 2026/27
+  const suffix1 = String(schoolYear.startDate.getFullYear()).slice(-2); // "26" for 2026/27
   const suffix2 = String(schoolYear.startDate.getFullYear() - 1).slice(-2); // "25" for 2026/27
 
   const classes = parseUntisClasses(
@@ -101,8 +96,8 @@ export async function fetchSchoolPeriods(
           last: Math.max(r1.last, ranges2[i].last),
         }))
       : ([ranges1, ranges2].find((r) => r.length === 4) ??
-         [ranges1, ranges2].find((r) => r.length >= 2) ??
-         null);
+        [ranges1, ranges2].find((r) => r.length >= 2) ??
+        null);
 
   if (!subjects) return [];
 

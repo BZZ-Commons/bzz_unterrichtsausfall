@@ -11,7 +11,7 @@ services:
     image: unterrichtsausfaelle:latest
     container_name: unterrichtsausfaelle
     ports:
-      - "127.0.0.1:3002:3000"
+      - '127.0.0.1:3002:3000'
     restart: always
     env_file: .env
 
@@ -30,11 +30,11 @@ services:
       resources:
         limits:
           memory: 512M
-          cpus: "1.0"
+          cpus: '1.0'
 
     # ── Healthcheck ───────────────────────────────────────────────────────────
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ >/dev/null"]
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/ >/dev/null']
       interval: 30s
       timeout: 10s
       retries: 3

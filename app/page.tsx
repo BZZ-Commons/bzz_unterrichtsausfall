@@ -81,22 +81,25 @@ export default function HomePage() {
     reset: resetAggregated,
   } = useAggregatedData(selectedSchoolYearId);
 
-  const handleClassChange = useCallback((id: number) => {
-    const cls = classes.find((c) => c.id === id);
-    if (!cls) return;
+  const handleClassChange = useCallback(
+    (id: number) => {
+      const cls = classes.find((c) => c.id === id);
+      if (!cls) return;
 
-    // IA classes whose companion was NOT auto-resolved server-side need the dialog.
-    // (Years where IA a/b/c all exist resolve unambiguously and skip it.)
-    const unresolvedIA = isIAClass(cls.name) && (cls.fetchIds?.length ?? 0) < 2;
-    if (unresolvedIA) {
-      setIaDialogClass(cls);
-      return;
-    }
+      // IA classes whose companion was NOT auto-resolved server-side need the dialog.
+      // (Years where IA a/b/c all exist resolve unambiguously and skip it.)
+      const unresolvedIA = isIAClass(cls.name) && (cls.fetchIds?.length ?? 0) < 2;
+      if (unresolvedIA) {
+        setIaDialogClass(cls);
+        return;
+      }
 
-    const fetchIds = cls.fetchIds ?? [id];
-    setSelectedFetchIds(fetchIds);
-    void loadCalendar(fetchIds);
-  }, [classes, loadCalendar, setSelectedFetchIds]);
+      const fetchIds = cls.fetchIds ?? [id];
+      setSelectedFetchIds(fetchIds);
+      void loadCalendar(fetchIds);
+    },
+    [classes, loadCalendar, setSelectedFetchIds],
+  );
 
   const { captureUrlParams, isPending } = useDeepLink({
     classes,
@@ -124,33 +127,35 @@ export default function HomePage() {
     loadAggregated,
   };
 
-  const handleIAVariantPick = useCallback((companion: UntisClass) => {
-    const cls = iaDialogClass;
-    if (!cls) return;
-    setIaDialogClass(null);
-    const fetchIds = [cls.id, companion.id];
-    setSelectedFetchIds(fetchIds);
-    void loadCalendar(fetchIds);
-  }, [iaDialogClass, loadCalendar, setSelectedFetchIds]);
+  const handleIAVariantPick = useCallback(
+    (companion: UntisClass) => {
+      const cls = iaDialogClass;
+      if (!cls) return;
+      setIaDialogClass(null);
+      const fetchIds = [cls.id, companion.id];
+      setSelectedFetchIds(fetchIds);
+      void loadCalendar(fetchIds);
+    },
+    [iaDialogClass, loadCalendar, setSelectedFetchIds],
+  );
 
-  const handleViewModeChange = useCallback((mode: ViewMode) => {
-    if (mode === viewMode) return;
-    setViewMode(mode);
-    if (mode === 'all' && aggregatedData == null && !aggregatedLoading) {
-      void loadAggregated();
-    }
-  }, [viewMode, aggregatedData, aggregatedLoading, loadAggregated]);
+  const handleViewModeChange = useCallback(
+    (mode: ViewMode) => {
+      if (mode === viewMode) return;
+      setViewMode(mode);
+      if (mode === 'all' && aggregatedData == null && !aggregatedLoading) {
+        void loadAggregated();
+      }
+    },
+    [viewMode, aggregatedData, aggregatedLoading, loadAggregated],
+  );
 
   const selectedClassId = selectedFetchIds?.[0] ?? null;
-  const selectedClass = selectedClassId != null
-    ? classes.find((c) => c.id === selectedClassId)
-    : undefined;
+  const selectedClass =
+    selectedClassId != null ? classes.find((c) => c.id === selectedClassId) : undefined;
 
   // id → name, so a day cell can name the (possibly companion) class it links to.
-  const classNamesById = useMemo(
-    () => new Map(classes.map((c) => [c.id, c.name])),
-    [classes],
-  );
+  const classNamesById = useMemo(() => new Map(classes.map((c) => [c.id, c.name])), [classes]);
 
   const selectedSchoolYear = useMemo(
     () => schoolYears.find((y) => y.id === selectedSchoolYearId),
@@ -169,9 +174,8 @@ export default function HomePage() {
 
   // Only surface a companion in the header for single-companion merges (length 2).
   // Multi-companion classes (e.g. AB c → IA a+b) fall back to longName.
-  const selectedCompanion = selectedFetchIds?.length === 2
-    ? classes.find((c) => c.id === selectedFetchIds[1])
-    : null;
+  const selectedCompanion =
+    selectedFetchIds?.length === 2 ? classes.find((c) => c.id === selectedFetchIds[1]) : null;
 
   // Sync URL with current state so it stays shareable / copy-pasteable.
   useUrlSync({
@@ -198,12 +202,10 @@ export default function HomePage() {
     '--sticky-stack-top': `${stickyHeaderHeight}px`,
   } as React.CSSProperties;
 
-  const showSingleEmptyState =
-    viewMode === 'single' && !selectedClassId && !calendarLoading;
+  const showSingleEmptyState = viewMode === 'single' && !selectedClassId && !calendarLoading;
   const showSingleCalendar =
     viewMode === 'single' && calendarData && !calendarLoading && selectedClassId != null;
-  const showAggregatedCalendar =
-    viewMode === 'all' && aggregatedData && !aggregatedLoading;
+  const showAggregatedCalendar = viewMode === 'all' && aggregatedData && !aggregatedLoading;
   const showAggregatedLoading = viewMode === 'all' && aggregatedLoading;
   const showSingleLoading = viewMode === 'single' && calendarLoading;
   const showSingleError = viewMode === 'single' && calendarError && !calendarLoading;
@@ -240,8 +242,8 @@ export default function HomePage() {
       <main className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-6 flex flex-col sm:flex-row items-center gap-3">
           <ViewToggle value={viewMode} onChange={handleViewModeChange} />
-          {viewMode === 'single' && (
-            classesError ? (
+          {viewMode === 'single' &&
+            (classesError ? (
               <p className="sm:ml-auto text-sm text-red-600 flex items-center gap-1">
                 <AlertCircle className="w-4 h-4" />
                 {classesError}
@@ -254,8 +256,7 @@ export default function HomePage() {
                 loading={classesLoading}
                 className="sm:ml-auto"
               />
-            )
-          )}
+            ))}
         </div>
 
         {showDraftNotice && selectedSchoolYear && (
@@ -267,11 +268,10 @@ export default function HomePage() {
             <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center mx-auto mb-4">
               <CalendarDays className="w-8 h-8 text-indigo-400" />
             </div>
-            <h2 className="text-lg font-semibold text-slate-700 mb-1">
-              Klasse auswählen
-            </h2>
+            <h2 className="text-lg font-semibold text-slate-700 mb-1">Klasse auswählen</h2>
             <p className="text-sm text-slate-500 max-w-sm mx-auto">
-              Wählen Sie oben eine Klasse aus, um den Schuljahreskalender mit allen Ausfällen anzuzeigen.
+              Wählen Sie oben eine Klasse aus, um den Schuljahreskalender mit allen Ausfällen
+              anzuzeigen.
             </p>
           </div>
         )}
@@ -308,7 +308,10 @@ export default function HomePage() {
         )}
 
         {showSingleCalendar && calendarData && selectedClassId != null && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6" style={stickyStackStyle}>
+          <div
+            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6"
+            style={stickyStackStyle}
+          >
             <div ref={stickyHeaderRef} className={STICKY_CARD_HEADER_CLASS}>
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
@@ -350,7 +353,10 @@ export default function HomePage() {
         )}
 
         {showAggregatedCalendar && aggregatedData && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6" style={stickyStackStyle}>
+          <div
+            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6"
+            style={stickyStackStyle}
+          >
             <div ref={stickyHeaderRef} className={STICKY_CARD_HEADER_CLASS}>
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">

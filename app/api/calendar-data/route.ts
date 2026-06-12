@@ -21,7 +21,10 @@ export async function GET(request: Request): Promise<NextResponse> {
     .filter((n) => !isNaN(n));
 
   if (allClassIds.length === 0) {
-    return NextResponse.json({ error: 'Invalid classIds: must be comma-separated numbers' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid classIds: must be comma-separated numbers' },
+      { status: 400 },
+    );
   }
 
   const yearId = yearIdParam ? parseInt(yearIdParam, 10) : null;

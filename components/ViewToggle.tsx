@@ -11,7 +11,7 @@ interface ViewToggleProps {
 
 const OPTIONS: Array<{ value: ViewMode; label: string; Icon: typeof User }> = [
   { value: 'single', label: 'Einzelne Klasse', Icon: User },
-  { value: 'all',    label: 'Alle Klassen',    Icon: Users },
+  { value: 'all', label: 'Alle Klassen', Icon: Users },
 ];
 
 export default function ViewToggle({ value, onChange }: ViewToggleProps) {
@@ -31,9 +31,7 @@ export default function ViewToggle({ value, onChange }: ViewToggleProps) {
             aria-selected={active}
             onClick={() => onChange(v)}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              active
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-50'
+              active ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
             }`}
           >
             <Icon className="w-4 h-4" aria-hidden="true" />

@@ -32,17 +32,15 @@ export async function listActiveClassesEnriched(
   const classMap = buildClassMap(active);
   const iaYearsWithC = getIAYearsWithC(active);
 
-  return active
-    .sort(compareClassPriority)
-    .map((c): UntisClass => {
-      if (isIAClass(c.name) && iaNeedsDialog(c.name, iaYearsWithC)) {
-        return { ...c, companionNames: [], fetchIds: [c.id] };
-      }
-      const companionIds = getCompanionClassIds(c.name, classMap);
-      return {
-        ...c,
-        companionNames: getCompanionNames(c.name),
-        fetchIds: [c.id, ...companionIds],
-      };
-    });
+  return active.sort(compareClassPriority).map((c): UntisClass => {
+    if (isIAClass(c.name) && iaNeedsDialog(c.name, iaYearsWithC)) {
+      return { ...c, companionNames: [], fetchIds: [c.id] };
+    }
+    const companionIds = getCompanionClassIds(c.name, classMap);
+    return {
+      ...c,
+      companionNames: getCompanionNames(c.name),
+      fetchIds: [c.id, ...companionIds],
+    };
+  });
 }

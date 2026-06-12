@@ -23,12 +23,12 @@ export async function exportCalendarToExcel(
   const XLSX = await import('xlsx');
 
   const COLUMNS = [
-    { key: 'Datum',       wch: 12, detailsOnly: false },
-    { key: 'Wochentag',   wch: 10, detailsOnly: false },
-    { key: 'Typ',         wch: 22, detailsOnly: false },
+    { key: 'Datum', wch: 12, detailsOnly: false },
+    { key: 'Wochentag', wch: 10, detailsOnly: false },
+    { key: 'Typ', wch: 22, detailsOnly: false },
     { key: 'Bezeichnung', wch: 45, detailsOnly: false },
-    { key: 'Lektionen',   wch: 10, detailsOnly: true  },
-    { key: 'Abgesagt',    wch: 10, detailsOnly: true  },
+    { key: 'Lektionen', wch: 10, detailsOnly: true },
+    { key: 'Abgesagt', wch: 10, detailsOnly: true },
   ] as const;
 
   const activeCols = COLUMNS.filter((c) => !c.detailsOnly || detailsMode);
@@ -38,12 +38,12 @@ export async function exportCalendarToExcel(
     .map((d) => {
       const date = parseISO(d.date);
       const full = {
-        Datum:       format(date, 'dd.MM.yyyy'),
-        Wochentag:   DOW_LABELS[getISODay(date) - 1] ?? '',
-        Typ:         TYPE_LABELS[d.type] ?? d.type,
+        Datum: format(date, 'dd.MM.yyyy'),
+        Wochentag: DOW_LABELS[getISODay(date) - 1] ?? '',
+        Typ: TYPE_LABELS[d.type] ?? d.type,
         Bezeichnung: d.holidayName ?? d.eventName ?? '',
-        Lektionen:   d.lessonCount ?? '',
-        Abgesagt:    d.cancelledCount ?? '',
+        Lektionen: d.lessonCount ?? '',
+        Abgesagt: d.cancelledCount ?? '',
       };
       return Object.fromEntries(activeCols.map((c) => [c.key, full[c.key]]));
     });

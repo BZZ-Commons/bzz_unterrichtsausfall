@@ -95,9 +95,7 @@ export default function AggregatedCalendar({
 
   if (monthGroups.length === 0) {
     return (
-      <p className="text-sm text-slate-500 text-center py-12">
-        Keine Kalenderdaten verfügbar.
-      </p>
+      <p className="text-sm text-slate-500 text-center py-12">Keine Kalenderdaten verfügbar.</p>
     );
   }
 
@@ -132,7 +130,9 @@ export default function AggregatedCalendar({
               const divider = dividerMap.get(week.monday);
               return (
                 <div key={week.isoWeek}>
-                  {divider && <PeriodDivider quarter={divider.quarter} semester={divider.semester} />}
+                  {divider && (
+                    <PeriodDivider quarter={divider.quarter} semester={divider.semester} />
+                  )}
                   <div className="grid grid-cols-[3rem_1fr] gap-2 items-center">
                     <div className="text-xs text-slate-400 text-right pr-1 tabular-nums">
                       {week.isoWeek}
@@ -154,9 +154,7 @@ export default function AggregatedCalendar({
         </section>
       ))}
 
-      <p className="text-xs text-slate-400 text-center pt-2">
-        Schuljahr {schoolYearName}
-      </p>
+      <p className="text-xs text-slate-400 text-center pt-2">Schuljahr {schoolYearName}</p>
     </div>
   );
 }

@@ -10,12 +10,14 @@ export async function GET(): Promise<NextResponse> {
       const raw = await untis.getSchoolyears(true);
       return raw
         .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
-        .map((y): SchoolYearSummary => ({
-          id: y.id,
-          name: y.name,
-          startDate: new Date(y.startDate).toISOString(),
-          endDate: new Date(y.endDate).toISOString(),
-        }));
+        .map(
+          (y): SchoolYearSummary => ({
+            id: y.id,
+            name: y.name,
+            startDate: new Date(y.startDate).toISOString(),
+            endDate: new Date(y.endDate).toISOString(),
+          }),
+        );
     });
     return NextResponse.json(years);
   } catch (error: unknown) {

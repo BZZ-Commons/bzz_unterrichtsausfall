@@ -70,11 +70,31 @@ describe('groupClassesByPlan', () => {
   });
 
   it('produces one group per distinct plan over a mixed set', () => {
-    const groups = groupClassesByPlan([IA24a, IA24b, BM24a, BM24b, AB24c, ME24a, AB24a, IM23a, AB25b]);
+    const groups = groupClassesByPlan([
+      IA24a,
+      IA24b,
+      BM24a,
+      BM24b,
+      AB24c,
+      ME24a,
+      AB24a,
+      IM23a,
+      AB25b,
+    ]);
     // IA24 a, IA24 b, ME24 a, IM23 a, AB25 b
     expect(groups).toHaveLength(5);
     // Every representative is one of the input classes (→ also in the dropdown).
-    const inputNames = new Set(['IA24 a', 'IA24 b', 'BM24 a', 'BM24 b', 'AB24 c', 'ME24 a', 'AB24 a', 'IM23 a', 'AB25 b']);
+    const inputNames = new Set([
+      'IA24 a',
+      'IA24 b',
+      'BM24 a',
+      'BM24 b',
+      'AB24 c',
+      'ME24 a',
+      'AB24 a',
+      'IM23 a',
+      'AB25 b',
+    ]);
     for (const g of groups) expect(inputNames.has(g.representative.name)).toBe(true);
   });
 });

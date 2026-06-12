@@ -1,9 +1,9 @@
 export type DayType =
-  | 'ferien'          // school vacation period (Schulferien)
-  | 'normal'          // school day with at least one non-cancelled lesson
+  | 'ferien' // school vacation period (Schulferien)
+  | 'normal' // school day with at least one non-cancelled lesson
   | 'unterrichtsausfall' // no effective lessons: day cancelled, all lessons cancelled, or "Unterrichtsausfall" event
-  | 'veranstaltung'   // special school event (Veranstaltung) without "Unterrichtsausfall" prefix
-  | 'no-lessons'      // weekday that is simply not a school day for this class
+  | 'veranstaltung' // special school event (Veranstaltung) without "Unterrichtsausfall" prefix
+  | 'no-lessons' // weekday that is simply not a school day for this class
   | 'weekend'
   | 'out-of-year';
 
@@ -25,12 +25,12 @@ export interface DayHalf {
 }
 
 export interface HalfDayInfo {
-  morning: DayHalf;   // lessons starting before 12:00 — left side of the cell
+  morning: DayHalf; // lessons starting before 12:00 — left side of the cell
   afternoon: DayHalf; // lessons starting at/after 12:00 — right side of the cell
 }
 
 export interface CalendarDay {
-  date: string;        // 'YYYY-MM-DD'
+  date: string; // 'YYYY-MM-DD'
   type: DayType;
   holidayName?: string;
   /**
@@ -68,7 +68,7 @@ export interface UntisHoliday {
   name: string;
   longName: string;
   startDate: number; // YYYYMMDD
-  endDate: number;   // YYYYMMDD
+  endDate: number; // YYYYMMDD
 }
 
 export interface UntisSchoolYear {
@@ -121,10 +121,10 @@ export interface SchoolYearSummary {
 }
 
 export interface SchoolPeriod {
-  name: string;        // "Q1", "Q2", "Q3", "Q4", "1. Semester", "2. Semester"
+  name: string; // "Q1", "Q2", "Q3", "Q4", "1. Semester", "2. Semester"
   type: 'quarter' | 'semester';
-  startDate: string;   // 'YYYY-MM-DD'
-  endDate: string;     // 'YYYY-MM-DD'
+  startDate: string; // 'YYYY-MM-DD'
+  endDate: string; // 'YYYY-MM-DD'
 }
 
 export interface CalendarData {
@@ -135,11 +135,11 @@ export interface CalendarData {
 // ─── Aggregated view (all classes at once) ───────────────────────────────────
 
 export type AggregatedDayType =
-  | 'normal'      // every class with school has a normal day
-  | 'irregular'   // at least one class has Unterrichtsausfall (cancelled / no effective lessons)
-  | 'ferien'      // global school vacation
+  | 'normal' // every class with school has a normal day
+  | 'irregular' // at least one class has Unterrichtsausfall (cancelled / no effective lessons)
+  | 'ferien' // global school vacation
   | 'weekend'
-  | 'no-school'   // weekday outside the school calendar for everyone
+  | 'no-school' // weekday outside the school calendar for everyone
   | 'out-of-year';
 
 /** Per-class status for a single day in the aggregated view. */
@@ -152,7 +152,7 @@ export interface ClassDayStatus {
 }
 
 export interface AggregatedDay {
-  date: string;              // 'YYYY-MM-DD'
+  date: string; // 'YYYY-MM-DD'
   type: AggregatedDayType;
   holidayName?: string;
   /** Populated only when `type === 'irregular'` — classes with Unterrichtsausfall on this day. */

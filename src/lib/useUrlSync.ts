@@ -48,5 +48,12 @@ export function useUrlSync({
     if (next !== window.location.pathname + window.location.search) {
       window.history.replaceState(null, '', next);
     }
-  }, [selectedSchoolYearShort, selectedClassName, selectedCompanionName, viewMode, detailsMode, isDeepLinkPending]);
+  }, [
+    selectedSchoolYearShort,
+    selectedClassName,
+    selectedCompanionName,
+    viewMode,
+    detailsMode,
+    isDeepLinkPending,
+  ]);
 }

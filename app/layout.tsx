@@ -3,7 +3,8 @@ import SiteFooter from '@/components/SiteFooter';
 
 export const metadata = {
   title: 'Unterrichtsausfälle – BZZ',
-  description: 'Schuljahreskalender mit Unterrichtsausfällen pro Klasse – BZZ Bildungszentrum Zürichsee',
+  description:
+    'Schuljahreskalender mit Unterrichtsausfällen pro Klasse – BZZ Bildungszentrum Zürichsee',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

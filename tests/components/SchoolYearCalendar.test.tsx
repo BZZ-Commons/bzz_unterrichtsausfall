@@ -72,9 +72,9 @@ describe('SchoolYearCalendar — structure and headers', () => {
     }
 
     // ISO week links — week 37 and week 38 for our two weeks
-    const weekLinks = screen.getAllByRole('link').filter((a) =>
-      a.textContent === '37' || a.textContent === '38',
-    );
+    const weekLinks = screen
+      .getAllByRole('link')
+      .filter((a) => a.textContent === '37' || a.textContent === '38');
     expect(weekLinks.length).toBeGreaterThanOrEqual(2);
 
     // Each week link href contains the classId and the Monday date
@@ -88,24 +88,12 @@ describe('SchoolYearCalendar — structure and headers', () => {
   });
 
   it('renders the school year footer text', () => {
-    render(
-      <SchoolYearCalendar
-        days={ALL_DAYS}
-        schoolYearName="2025/26"
-        classId={CLASS_A_ID}
-      />,
-    );
+    render(<SchoolYearCalendar days={ALL_DAYS} schoolYearName="2025/26" classId={CLASS_A_ID} />);
     expect(screen.getByText('Schuljahr 2025/26')).toBeInTheDocument();
   });
 
   it('shows empty-state message when no days provided', () => {
-    render(
-      <SchoolYearCalendar
-        days={[]}
-        schoolYearName="2025/26"
-        classId={CLASS_A_ID}
-      />,
-    );
+    render(<SchoolYearCalendar days={[]} schoolYearName="2025/26" classId={CLASS_A_ID} />);
     expect(screen.getByText('Keine Kalenderdaten verfügbar.')).toBeInTheDocument();
   });
 });
@@ -135,7 +123,9 @@ describe('SchoolYearCalendar — normal day cell', () => {
     const links = screen.getAllByRole('link');
     // The day-cell link for 2025-09-08 should carry the class name and lesson info
     const dayLink = links.find(
-      (a) => a.getAttribute('href')?.includes(String(CLASS_A_ID)) && a.getAttribute('title')?.includes('IA25a'),
+      (a) =>
+        a.getAttribute('href')?.includes(String(CLASS_A_ID)) &&
+        a.getAttribute('title')?.includes('IA25a'),
     );
     expect(dayLink).toBeDefined();
     const title = dayLink!.getAttribute('title') ?? '';
@@ -167,7 +157,8 @@ describe('SchoolYearCalendar — normal day cell', () => {
     // The day link should point to the fallback classId
     const links = screen.getAllByRole('link');
     const dayLink = links.find(
-      (a) => a.getAttribute('href')?.includes(String(FALLBACK_ID)) && a.textContent?.trim() === '08',
+      (a) =>
+        a.getAttribute('href')?.includes(String(FALLBACK_ID)) && a.textContent?.trim() === '08',
     );
     expect(dayLink).toBeDefined();
     expect(dayLink).toHaveAttribute('href', expect.stringContaining(String(FALLBACK_ID)));

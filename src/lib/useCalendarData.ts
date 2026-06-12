@@ -25,25 +25,28 @@ export function useCalendarData(selectedSchoolYearId: number | null) {
 
   const abortRef = useRef<AbortController | null>(null);
 
-  const loadCalendar = useCallback(async (fetchIds: number[]) => {
-    if (selectedSchoolYearId == null) return;
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setError(null);
-    setLoading(true);
-    try {
-      const url = `/api/calendar-data?classIds=${fetchIds.join(',')}&schoolyearId=${selectedSchoolYearId}`;
-      const result = await fetchJson<CalendarData>(url, controller.signal);
-      if (controller.signal.aborted) return;
-      setData(result);
-    } catch (err) {
-      if (isAbortError(err)) return;
-      setError(err instanceof Error ? err.message : 'Fehler beim Laden des Kalenders');
-    } finally {
-      if (!controller.signal.aborted) setLoading(false);
-    }
-  }, [selectedSchoolYearId]);
+  const loadCalendar = useCallback(
+    async (fetchIds: number[]) => {
+      if (selectedSchoolYearId == null) return;
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setError(null);
+      setLoading(true);
+      try {
+        const url = `/api/calendar-data?classIds=${fetchIds.join(',')}&schoolyearId=${selectedSchoolYearId}`;
+        const result = await fetchJson<CalendarData>(url, controller.signal);
+        if (controller.signal.aborted) return;
+        setData(result);
+      } catch (err) {
+        if (isAbortError(err)) return;
+        setError(err instanceof Error ? err.message : 'Fehler beim Laden des Kalenders');
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    },
+    [selectedSchoolYearId],
+  );
 
   const abort = useCallback(() => abortRef.current?.abort(), []);
 

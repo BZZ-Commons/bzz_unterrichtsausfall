@@ -47,9 +47,7 @@ export default function ClassSelector({
   const selectedClass = currentIndex >= 0 ? classes[currentIndex] : null;
 
   const filtered = query.trim()
-    ? classes.filter((c) =>
-        c.name.toLowerCase().includes(query.trim().toLowerCase()),
-      )
+    ? classes.filter((c) => c.name.toLowerCase().includes(query.trim().toLowerCase()))
     : classes;
 
   const openDropdown = useCallback(() => {
@@ -78,9 +76,7 @@ export default function ClassSelector({
   const step = (delta: number) => {
     const n = classes.length;
     if (n === 0) return;
-    const next = currentIndex < 0
-      ? (delta > 0 ? 0 : n - 1)
-      : (currentIndex + delta + n) % n;
+    const next = currentIndex < 0 ? (delta > 0 ? 0 : n - 1) : (currentIndex + delta + n) % n;
     onChange(classes[next].id);
   };
 
@@ -134,9 +130,7 @@ export default function ClassSelector({
 
   const displayLabel = selectedClass
     ? selectedClass.name +
-      (selectedClass.companionNames?.length
-        ? ` (+${selectedClass.companionNames.join(', ')})`
-        : '')
+      (selectedClass.companionNames?.length ? ` (+${selectedClass.companionNames.join(', ')})` : '')
     : loading
       ? 'Lade Klassen …'
       : '— Klasse wählen —';
@@ -145,7 +139,9 @@ export default function ClassSelector({
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      <span id={LABEL_ID} className="sr-only">Klasse auswählen</span>
+      <span id={LABEL_ID} className="sr-only">
+        Klasse auswählen
+      </span>
 
       {/* Combined pill: ‹ prev · trigger (filter dropdown) · next › */}
       <div className="inline-flex items-center rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
@@ -171,7 +167,9 @@ export default function ClassSelector({
                      hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-200
                      disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
         >
-          <span className={`min-w-[5rem] max-w-[12rem] truncate text-center ${selectedClass ? 'text-slate-900' : 'text-slate-400'}`}>
+          <span
+            className={`min-w-[5rem] max-w-[12rem] truncate text-center ${selectedClass ? 'text-slate-900' : 'text-slate-400'}`}
+          >
             {displayLabel}
           </span>
           <svg
@@ -260,9 +258,7 @@ export default function ClassSelector({
                     `}
                   >
                     {c.name}
-                    {companions && (
-                      <span className="text-slate-400 ml-1">{companions}</span>
-                    )}
+                    {companions && <span className="text-slate-400 ml-1">{companions}</span>}
                   </li>
                 );
               })

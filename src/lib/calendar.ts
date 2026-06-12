@@ -4,7 +4,16 @@ import { format, addDays, getISODay, getISOWeek, getISOWeekYear } from 'date-fns
 function getWeekKey(date: Date): number {
   return getISOWeekYear(date) * 100 + getISOWeek(date);
 }
-import type { CalendarDay, DayHalf, DayType, HalfDayInfo, HalfStatus, UntisHoliday, UntisLesson, UntisSchoolYear } from '@/src/types';
+import type {
+  CalendarDay,
+  DayHalf,
+  DayType,
+  HalfDayInfo,
+  HalfStatus,
+  UntisHoliday,
+  UntisLesson,
+  UntisSchoolYear,
+} from '@/src/types';
 
 /** Lessons starting before this HHMM time count as Vormittag (morning, left half). */
 const NOON = 1200;
@@ -30,7 +39,7 @@ export function parseUntisDate(date: number): Date {
   return new Date(
     parseInt(s.slice(0, 4), 10),
     parseInt(s.slice(4, 6), 10) - 1,
-    parseInt(s.slice(6, 8), 10)
+    parseInt(s.slice(6, 8), 10),
   );
 }
 
@@ -81,7 +90,11 @@ function getEventText(event: UntisLesson): string | undefined {
 
 /** Schulausfall reason from an event period, with any "Unterrichtsausfall:" prefix stripped. */
 function eventReason(event: UntisLesson): string | undefined {
-  return getEventText(event)?.replace(/^Unterrichtsausfall:\s*/i, '').trim() || undefined;
+  return (
+    getEventText(event)
+      ?.replace(/^Unterrichtsausfall:\s*/i, '')
+      .trim() || undefined
+  );
 }
 
 /** German label for the status of one half of a split day cell. */
@@ -198,7 +211,10 @@ function dominantClassId(lessons: UntisLesson[]): number | undefined {
   let bestCount = 0;
   for (const id of order) {
     const c = counts.get(id) ?? 0;
-    if (c > bestCount) { best = id; bestCount = c; }
+    if (c > bestCount) {
+      best = id;
+      bestCount = c;
+    }
   }
   return best;
 }
@@ -218,7 +234,10 @@ function dominantClassId(lessons: UntisLesson[]): number | undefined {
  * Lessons whose start time is missing can't be placed; if nothing lands in either
  * half the day stays a single cell (link only).
  */
-function computeDaySplit(dayLessons: UntisLesson[]): { halfDay?: HalfDayInfo; linkClassId?: number } {
+function computeDaySplit(dayLessons: UntisLesson[]): {
+  halfDay?: HalfDayInfo;
+  linkClassId?: number;
+} {
   const real = dayLessons.filter((l) => !isEventPeriod(l));
   const held = real.filter((l) => l.code !== 'cancelled');
   const cancelled = real.filter((l) => l.code === 'cancelled');
@@ -249,7 +268,11 @@ function computeDaySplit(dayLessons: UntisLesson[]): { halfDay?: HalfDayInfo; li
     events.filter(pred).map(eventReason).find(Boolean) ?? dayReason;
 
   // <6 held → status per half, with the class owning that half's lessons.
-  const halfOf = (heldH: UntisLesson[], cancelledH: UntisLesson[], pred: (l: UntisLesson) => boolean): DayHalf => {
+  const halfOf = (
+    heldH: UntisLesson[],
+    cancelledH: UntisLesson[],
+    pred: (l: UntisLesson) => boolean,
+  ): DayHalf => {
     if (heldH.length > 0) return { status: 'lessons', classId: dominantClassId(heldH) };
     if (cancelledH.length > 0) {
       const h: DayHalf = { status: 'cancelled', classId: dominantClassId(cancelledH) };
@@ -292,7 +315,7 @@ function computeDaySplit(dayLessons: UntisLesson[]): { halfDay?: HalfDayInfo; li
 export function classifyDays(
   schoolYear: UntisSchoolYear,
   holidays: UntisHoliday[],
-  lessons: UntisLesson[]
+  lessons: UntisLesson[],
 ): CalendarDay[] {
   const holidayMap = buildHolidayMap(holidays);
   const lessonMap = buildLessonMap(lessons);
@@ -351,9 +374,7 @@ export function classifyDays(
         // Genuine teaching: normal lessons, plus irregular periods that still
         // have a subject (substitutions where teaching happens). Special events
         // ("Veranstaltung": irregular + no subject) do NOT count — see isEventPeriod.
-        lessonCount = dayLessons.filter(
-          (l) => l.code !== 'cancelled' && !isEventPeriod(l),
-        ).length;
+        lessonCount = dayLessons.filter((l) => l.code !== 'cancelled' && !isEventPeriod(l)).length;
 
         if (lessonCount > 0) {
           type = 'normal';

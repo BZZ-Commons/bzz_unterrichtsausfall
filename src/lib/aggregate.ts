@@ -1,9 +1,4 @@
-import type {
-  AggregatedDay,
-  AggregatedDayType,
-  CalendarDay,
-  ClassDayStatus,
-} from '@/src/types';
+import type { AggregatedDay, AggregatedDayType, CalendarDay, ClassDayStatus } from '@/src/types';
 
 /** Per-class classification input for aggregation. */
 export interface PerClassClassification {
@@ -62,7 +57,10 @@ export function aggregateClassDays(
   });
 }
 
-function asHolidayDay(date: string, holidayMap?: ReadonlyMap<string, string>): AggregatedDay | undefined {
+function asHolidayDay(
+  date: string,
+  holidayMap?: ReadonlyMap<string, string>,
+): AggregatedDay | undefined {
   const holidayName = holidayMap?.get(date);
   return holidayName !== undefined ? { date, type: 'ferien', holidayName } : undefined;
 }

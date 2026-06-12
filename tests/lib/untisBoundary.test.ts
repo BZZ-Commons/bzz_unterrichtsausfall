@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  parseUntisLessons,
-  parseUntisClasses,
-  parseUntisHolidays,
-} from '@/src/lib/untisBoundary';
+import { parseUntisLessons, parseUntisClasses, parseUntisHolidays } from '@/src/lib/untisBoundary';
 
 // ─── parseUntisLessons ───────────────────────────────────────────────────────
 
@@ -11,7 +7,15 @@ describe('parseUntisLessons', () => {
   it('passes valid lessons through (same reference, typed)', () => {
     const raw = [
       { id: 1, date: 20250818 },
-      { id: 2, date: 20250819, startTime: 800, code: 'cancelled', su: [{ name: 'Eng' }], lstext: 'x', substText: 'y' },
+      {
+        id: 2,
+        date: 20250819,
+        startTime: 800,
+        code: 'cancelled',
+        su: [{ name: 'Eng' }],
+        lstext: 'x',
+        substText: 'y',
+      },
     ];
     const result = parseUntisLessons(raw, 'ctx');
     expect(result).toBe(raw); // returns the same array reference
@@ -72,7 +76,10 @@ describe('parseUntisLessons', () => {
   });
 
   it('truncates the offending element preview to ~200 chars', () => {
-    const raw = [{ id: 1, date: 20250818 }, { id: 'bad', filler: 'x'.repeat(500) }];
+    const raw = [
+      { id: 1, date: 20250818 },
+      { id: 'bad', filler: 'x'.repeat(500) },
+    ];
     let message = '';
     try {
       parseUntisLessons(raw, 'ctx');
@@ -101,7 +108,10 @@ describe('parseUntisClasses', () => {
   });
 
   it('throws with context + index when a required field is missing', () => {
-    const raw = [{ id: 1, name: 'IA26 a', longName: 'x', active: true }, { id: 2, name: 'BM', active: true }];
+    const raw = [
+      { id: 1, name: 'IA26 a', longName: 'x', active: true },
+      { id: 2, name: 'BM', active: true },
+    ];
     expect(() => parseUntisClasses(raw, 'classes for school year 99')).toThrow(
       /classes for school year 99/,
     );
@@ -129,7 +139,13 @@ describe('parseUntisClasses', () => {
 describe('parseUntisHolidays', () => {
   it('passes valid holidays through', () => {
     const raw = [
-      { id: 1, name: 'Herbstferien', longName: 'Herbstferien', startDate: 20250818, endDate: 20250822 },
+      {
+        id: 1,
+        name: 'Herbstferien',
+        longName: 'Herbstferien',
+        startDate: 20250818,
+        endDate: 20250822,
+      },
     ];
     expect(parseUntisHolidays(raw, 'holidays')).toBe(raw);
   });

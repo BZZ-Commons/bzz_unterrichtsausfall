@@ -29,13 +29,13 @@ Companion-Projekt zu [bzz_dispensationsgesuche](https://github.com/BZZ-Commons/b
 Alle Parameter sind kombinierbar und bleiben beim Wechsel von Klasse oder
 Schuljahr erhalten.
 
-| Parameter | Beispiel | Bedeutung |
-|-----------|---------|-----------|
-| `schoolyear` | `?schoolyear=25` | Öffnet das Schuljahr, dessen Name mit `25` beginnt |
-| `class` | `?class=IN23a` | Wählt diese Klasse direkt aus |
-| `companion` | `?companion=IN23a-BM` | Löst IA-Varianten ohne Dialog auf |
-| `view` | `?view=all` | Öffnet direkt die Alle-Klassen-Ansicht |
-| `details` | `?details=true` | Aktiviert den Detailmodus: Normal-Tage mit teilweisem Ausfall werden pink eingefärbt |
+| Parameter    | Beispiel              | Bedeutung                                                                            |
+| ------------ | --------------------- | ------------------------------------------------------------------------------------ |
+| `schoolyear` | `?schoolyear=25`      | Öffnet das Schuljahr, dessen Name mit `25` beginnt                                   |
+| `class`      | `?class=IN23a`        | Wählt diese Klasse direkt aus                                                        |
+| `companion`  | `?companion=IN23a-BM` | Löst IA-Varianten ohne Dialog auf                                                    |
+| `view`       | `?view=all`           | Öffnet direkt die Alle-Klassen-Ansicht                                               |
+| `details`    | `?details=true`       | Aktiviert den Detailmodus: Normal-Tage mit teilweisem Ausfall werden pink eingefärbt |
 
 Der `details`-Parameter ist **sitzungspersistent**: Er wird bei jedem URL-Update
 automatisch mitgeschrieben und bleibt beim Wechsel von Klasse oder Schuljahr
@@ -127,14 +127,14 @@ tests/                        Vitest Unit-Tests
 Der Button erscheint im Einzelklassen-Kalender (oben rechts). Er exportiert alle
 Schultage (ohne Wochenenden, `no-lessons` und `out-of-year`) mit folgenden Spalten:
 
-| Spalte | Inhalt |
-|--------|--------|
-| Datum | `dd.MM.yyyy` |
-| Wochentag | `Mo`–`Fr` |
-| Typ | `Normal`, `Unterrichtsausfall`, `Ferien`, `Veranstaltung`, `Kein Unterricht` |
-| Bezeichnung | Ferienname oder Veranstaltungsname |
-| Lektionen | Effektiv stattfindende Lektionen |
-| Abgesagt | Abgesagte Lektionen |
+| Spalte      | Inhalt                                                                       |
+| ----------- | ---------------------------------------------------------------------------- |
+| Datum       | `dd.MM.yyyy`                                                                 |
+| Wochentag   | `Mo`–`Fr`                                                                    |
+| Typ         | `Normal`, `Unterrichtsausfall`, `Ferien`, `Veranstaltung`, `Kein Unterricht` |
+| Bezeichnung | Ferienname oder Veranstaltungsname                                           |
+| Lektionen   | Effektiv stattfindende Lektionen                                             |
+| Abgesagt    | Abgesagte Lektionen                                                          |
 
 Dateiname: `Unterrichtsausfaelle_<Klasse>_<Schuljahr>.xlsx`
 

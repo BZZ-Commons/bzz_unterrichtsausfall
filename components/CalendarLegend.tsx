@@ -1,5 +1,10 @@
 import type { CSSProperties } from 'react';
-import { AGGREGATED_DAY_STYLES, DAY_STYLES, PARTIAL_CANCEL_STYLE, halfDayBackground } from '@/src/lib/calendar-styles';
+import {
+  AGGREGATED_DAY_STYLES,
+  DAY_STYLES,
+  PARTIAL_CANCEL_STYLE,
+  halfDayBackground,
+} from '@/src/lib/calendar-styles';
 
 type LegendVariant = 'single' | 'aggregated';
 
@@ -11,11 +16,15 @@ interface LegendItem {
 }
 
 const SINGLE_ITEMS: LegendItem[] = [
-  { cellClass: DAY_STYLES.normal.cell,        label: 'Normaler Schultag' },
-  { cellClass: '', label: 'Geteilter Tag (Halbtag / zwei Klassen)', swatchStyle: { background: halfDayBackground('lessons', 'none') } },
+  { cellClass: DAY_STYLES.normal.cell, label: 'Normaler Schultag' },
+  {
+    cellClass: '',
+    label: 'Geteilter Tag (Halbtag / zwei Klassen)',
+    swatchStyle: { background: halfDayBackground('lessons', 'none') },
+  },
   { cellClass: DAY_STYLES.veranstaltung.cell, label: 'Veranstaltung' },
   { cellClass: DAY_STYLES.unterrichtsausfall.cell, label: 'Unterrichtsausfall' },
-  { cellClass: DAY_STYLES.ferien.cell,        label: 'Schulferien' },
+  { cellClass: DAY_STYLES.ferien.cell, label: 'Schulferien' },
 ];
 
 const SINGLE_ITEMS_DETAILS: LegendItem[] = [
@@ -25,9 +34,12 @@ const SINGLE_ITEMS_DETAILS: LegendItem[] = [
 ];
 
 const AGGREGATED_ITEMS: LegendItem[] = [
-  { cellClass: AGGREGATED_DAY_STYLES.normal.cell,    label: 'Alle Klassen normal' },
-  { cellClass: AGGREGATED_DAY_STYLES.irregular.cell, label: 'Unregelmässigkeit (Klick für Details)' },
-  { cellClass: AGGREGATED_DAY_STYLES.ferien.cell,    label: 'Schulferien' },
+  { cellClass: AGGREGATED_DAY_STYLES.normal.cell, label: 'Alle Klassen normal' },
+  {
+    cellClass: AGGREGATED_DAY_STYLES.irregular.cell,
+    label: 'Unregelmässigkeit (Klick für Details)',
+  },
+  { cellClass: AGGREGATED_DAY_STYLES.ferien.cell, label: 'Schulferien' },
 ];
 
 interface CalendarLegendProps {
@@ -36,9 +48,8 @@ interface CalendarLegendProps {
 }
 
 export default function CalendarLegend({ variant = 'single', detailsMode }: CalendarLegendProps) {
-  const items = variant === 'aggregated'
-    ? AGGREGATED_ITEMS
-    : detailsMode ? SINGLE_ITEMS_DETAILS : SINGLE_ITEMS;
+  const items =
+    variant === 'aggregated' ? AGGREGATED_ITEMS : detailsMode ? SINGLE_ITEMS_DETAILS : SINGLE_ITEMS;
   return (
     <div className="flex flex-wrap gap-3 text-xs">
       {items.map(({ cellClass, label, swatchStyle }) => (

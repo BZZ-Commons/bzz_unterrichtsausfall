@@ -92,11 +92,7 @@ function optionalString(
   if (v != null && typeof v !== 'string') onFail(key);
 }
 
-function asRecord(
-  element: unknown,
-  context: string,
-  index: number,
-): Record<string, unknown> {
+function asRecord(element: unknown, context: string, index: number): Record<string, unknown> {
   if (typeof element !== 'object' || element === null || Array.isArray(element)) {
     fail(context, index, '<element>', element);
   }

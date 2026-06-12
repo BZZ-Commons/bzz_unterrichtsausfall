@@ -16,11 +16,11 @@ vi.mock('xlsx', () => ({
 }));
 
 const days: CalendarDay[] = [
-  { date: '2025-08-18', type: 'normal', lessonCount: 4 },                                   // Mon → included
-  { date: '2025-08-19', type: 'unterrichtsausfall', lessonCount: 0, cancelledCount: 3 },    // included
-  { date: '2025-08-20', type: 'no-lessons' },                                               // excluded
-  { date: '2025-08-23', type: 'weekend' },                                                  // excluded
-  { date: '2025-08-25', type: 'ferien', holidayName: 'Herbstferien' },                      // included
+  { date: '2025-08-18', type: 'normal', lessonCount: 4 }, // Mon → included
+  { date: '2025-08-19', type: 'unterrichtsausfall', lessonCount: 0, cancelledCount: 3 }, // included
+  { date: '2025-08-20', type: 'no-lessons' }, // excluded
+  { date: '2025-08-23', type: 'weekend' }, // excluded
+  { date: '2025-08-25', type: 'ferien', holidayName: 'Herbstferien' }, // included
 ];
 
 type SheetRow = Record<string, string | number>;

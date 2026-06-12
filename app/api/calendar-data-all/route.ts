@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
-import { withUntisClient, resolveSchoolyear, mapWithConcurrency, fetchClassTimetable } from '@/src/lib/webuntis';
+import {
+  withUntisClient,
+  resolveSchoolyear,
+  mapWithConcurrency,
+  fetchClassTimetable,
+} from '@/src/lib/webuntis';
 import { parseUntisHolidays } from '@/src/lib/untisBoundary';
 import { getCached } from '@/src/lib/serverCache';
 import { classifyDays, deduplicateLessons, buildHolidayDateMap } from '@/src/lib/calendar';
 import { aggregateClassDays, type PerClassClassification } from '@/src/lib/aggregate';
 import { listActiveClassesEnriched } from '@/src/lib/classes-server';
 import { groupClassesByPlan } from '@/src/lib/planGroups';
-import type {
-  AggregatedCalendarData,
-  UntisLesson,
-  UntisSchoolYear,
-} from '@/src/types';
+import type { AggregatedCalendarData, UntisLesson, UntisSchoolYear } from '@/src/types';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120; // seconds — allow up to 2 min for full-school fetch

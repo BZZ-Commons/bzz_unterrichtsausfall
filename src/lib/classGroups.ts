@@ -25,11 +25,11 @@ export const COMPANION_RULES: CompanionRule[] = [
   // IA (Informatik Applikationsentwicklung) ↔ BM (per Suffix); IA c ↔ AB c
   // The combined IA a/b + AB c view is a synthetic dropdown entry — see /api/classes.
   { match: /^IA(\d+)([ab])$/i, companions: ['BM$1 $2'] },
-  { match: /^IA(\d+)c$/i,      companions: ['AB$1 c'] },
+  { match: /^IA(\d+)c$/i, companions: ['AB$1 c'] },
 
   // AB (Allgemeinbildung) ↔ ME oder IA
   { match: /^AB(\d+)([ab])$/i, companions: ['ME$1 $2'] },
-  { match: /^AB(\d+)c$/i,      companions: ['IA$1 a', 'IA$1 b'] },
+  { match: /^AB(\d+)c$/i, companions: ['IA$1 a', 'IA$1 b'] },
   { match: /^AB(\d+)([ef])$/i, companions: ['ME$1 $2'] },
 
   // BM (Berufsmaturität) ↔ IA oder ME
@@ -76,9 +76,11 @@ export function getIAYearsWithC(classes: UntisClass[]): Set<string> {
  */
 export function iaNeedsDialog(name: string, yearsWithC: Set<string>): boolean {
   const parsed = parseIAName(name);
-  return parsed != null
-    && (parsed.suffix === 'a' || parsed.suffix === 'b')
-    && !yearsWithC.has(parsed.year);
+  return (
+    parsed != null &&
+    (parsed.suffix === 'a' || parsed.suffix === 'b') &&
+    !yearsWithC.has(parsed.year)
+  );
 }
 
 /** Build a normalized-name → class lookup map. O(n) once, O(1) lookups thereafter. */

@@ -90,10 +90,18 @@ export function useYearData({
     const cacheKey = `school-periods-${yearId}`;
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
-      try { setPeriods(JSON.parse(cached) as SchoolPeriod[]); return; } catch { /* ignore */ }
+      try {
+        setPeriods(JSON.parse(cached) as SchoolPeriod[]);
+        return;
+      } catch {
+        /* ignore */
+      }
     }
     try {
-      const data = await fetchJson<SchoolPeriod[]>(`/api/school-periods?schoolyearId=${yearId}`, signal);
+      const data = await fetchJson<SchoolPeriod[]>(
+        `/api/school-periods?schoolyearId=${yearId}`,
+        signal,
+      );
       if (signal?.aborted) return;
       sessionStorage.setItem(cacheKey, JSON.stringify(data));
       setPeriods(data);
@@ -120,7 +128,9 @@ export function useYearData({
         if (controller.signal.aborted) return;
         setSchoolYears(years);
         // Honour the URL year if it resolves to a known year; otherwise fall back to the default.
-        const fromUrl = urlYearShort ? findSchoolYearByShort(urlYearShort, years)?.id ?? null : null;
+        const fromUrl = urlYearShort
+          ? (findSchoolYearByShort(urlYearShort, years)?.id ?? null)
+          : null;
         const yearId = fromUrl ?? pickDefaultSchoolYearId(years);
         if (yearId == null) {
           setClassesLoading(false);
@@ -139,16 +149,19 @@ export function useYearData({
     // original effect that depended only on the equally-stable loader).
   }, [captureUrlParams, setDetailsMode, loadYearData]);
 
-  const handleSchoolYearChange = useCallback(async (id: number) => {
-    if (id === selectedSchoolYearId) return;
-    classesAbortRef.current?.abort();
-    onYearSwitch();
-    const controller = new AbortController();
-    classesAbortRef.current = controller;
-    setSelectedSchoolYearId(id);
-    await loadYearData(id, controller.signal);
-    if (viewMode === 'all') void loadAggregated(id);
-  }, [selectedSchoolYearId, onYearSwitch, loadYearData, viewMode, loadAggregated]);
+  const handleSchoolYearChange = useCallback(
+    async (id: number) => {
+      if (id === selectedSchoolYearId) return;
+      classesAbortRef.current?.abort();
+      onYearSwitch();
+      const controller = new AbortController();
+      classesAbortRef.current = controller;
+      setSelectedSchoolYearId(id);
+      await loadYearData(id, controller.signal);
+      if (viewMode === 'all') void loadAggregated(id);
+    },
+    [selectedSchoolYearId, onYearSwitch, loadYearData, viewMode, loadAggregated],
+  );
 
   return {
     schoolYears,

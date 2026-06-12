@@ -39,9 +39,7 @@ export function groupClassesByPlan(classes: ReadonlyArray<UntisClass>): PlanGrou
 
   const leadOf = (c: UntisClass): UntisClass => {
     const ids = c.fetchIds?.length ? c.fetchIds : [c.id];
-    const candidates = ids
-      .map((id) => byId.get(id))
-      .filter((x): x is UntisClass => x != null);
+    const candidates = ids.map((id) => byId.get(id)).filter((x): x is UntisClass => x != null);
     return highestPriority(candidates.length ? candidates : [c]);
   };
 
@@ -54,9 +52,11 @@ export function groupClassesByPlan(classes: ReadonlyArray<UntisClass>): PlanGrou
   }
 
   return Array.from(membersByLead.values())
-    .map((members): PlanGroup => ({
-      representative: highestPriority(members),
-      memberIds: members.map((m) => m.id),
-    }))
+    .map(
+      (members): PlanGroup => ({
+        representative: highestPriority(members),
+        memberIds: members.map((m) => m.id),
+      }),
+    )
     .sort((a, b) => compareClassPriority(a.representative, b.representative));
 }

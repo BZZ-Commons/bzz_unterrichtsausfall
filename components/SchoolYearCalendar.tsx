@@ -23,7 +23,13 @@ interface DayCellProps {
   detailsMode?: boolean;
 }
 
-const DayCell = memo(function DayCell({ day, monday, fallbackClassId, classNamesById, detailsMode }: DayCellProps) {
+const DayCell = memo(function DayCell({
+  day,
+  monday,
+  fallbackClassId,
+  classNamesById,
+  detailsMode,
+}: DayCellProps) {
   if (!day) {
     return <div className="h-9 w-full rounded-lg bg-white" />;
   }
@@ -49,13 +55,14 @@ const DayCell = memo(function DayCell({ day, monday, fallbackClassId, classNames
     const rightTip = halfTip('Nachmittag', afternoon);
     const bothCancelled = morning.status === 'cancelled' && afternoon.status === 'cancelled';
     // Exactly one half cancelled → its reason sits centred on that half (full text in its tooltip).
-    const onlyOneCancelled = (morning.status === 'cancelled') !== (afternoon.status === 'cancelled');
+    const onlyOneCancelled =
+      (morning.status === 'cancelled') !== (afternoon.status === 'cancelled');
     // A fully-cancelled day (both halves orange) gets orange text + a combined reason under the number.
     const overlayText = bothCancelled ? DAY_STYLES.unterrichtsausfall.text : 'text-slate-700';
     const combinedReason = bothCancelled
-      ? (morning.reason && afternoon.reason && morning.reason !== afternoon.reason
-          ? `${morning.reason} / ${afternoon.reason}`
-          : (morning.reason ?? afternoon.reason))
+      ? morning.reason && afternoon.reason && morning.reason !== afternoon.reason
+        ? `${morning.reason} / ${afternoon.reason}`
+        : (morning.reason ?? afternoon.reason)
       : undefined;
     // Both halves are identical links apart from their data — render via one helper.
     const renderHalf = (h: DayHalf, id: number | undefined, tip: string | undefined) => (
@@ -70,7 +77,9 @@ const DayCell = memo(function DayCell({ day, monday, fallbackClassId, classNames
       >
         {onlyOneCancelled && h.reason && (
           <span className="absolute inset-0 flex items-center justify-center px-0.5 text-orange-800">
-            <span className="text-[8px] font-medium leading-tight text-center w-full truncate">{h.reason}</span>
+            <span className="text-[8px] font-medium leading-tight text-center w-full truncate">
+              {h.reason}
+            </span>
           </span>
         )}
       </a>
@@ -80,7 +89,9 @@ const DayCell = memo(function DayCell({ day, monday, fallbackClassId, classNames
         {renderHalf(morning, leftId, leftTip)}
         <span className="w-px shrink-0 bg-slate-400/60" aria-hidden="true" />
         {renderHalf(afternoon, rightId, rightTip)}
-        <span className={`absolute inset-0 flex flex-col items-center justify-center px-0.5 pointer-events-none ${overlayText}`}>
+        <span
+          className={`absolute inset-0 flex flex-col items-center justify-center px-0.5 pointer-events-none ${overlayText}`}
+        >
           <span className="text-xs font-medium leading-none">{dayNum}</span>
           {combinedReason && (
             <span className="mt-0.5 text-[8px] font-normal leading-tight text-center w-full truncate">
@@ -106,7 +117,8 @@ const DayCell = memo(function DayCell({ day, monday, fallbackClassId, classNames
     return <div className={baseClass} />;
   }
 
-  const tooltip = [classNameOf(day.linkClassId), buildDayTooltip(day)].filter(Boolean).join(' · ') || undefined;
+  const tooltip =
+    [classNameOf(day.linkClassId), buildDayTooltip(day)].filter(Boolean).join(' · ') || undefined;
 
   return (
     <a
@@ -140,7 +152,15 @@ interface SchoolYearCalendarProps {
   showQuarterDividers?: boolean;
 }
 
-export default function SchoolYearCalendar({ days, schoolYearName, classId, classNamesById, detailsMode, periods, showQuarterDividers = false }: SchoolYearCalendarProps) {
+export default function SchoolYearCalendar({
+  days,
+  schoolYearName,
+  classId,
+  classNamesById,
+  detailsMode,
+  periods,
+  showQuarterDividers = false,
+}: SchoolYearCalendarProps) {
   const monthGroups = useMemo(() => buildMonthGroups(days), [days]);
   const dividerMap = useMemo(
     () => (periods?.length ? buildDividerMap(periods) : new Map()),
@@ -149,9 +169,7 @@ export default function SchoolYearCalendar({ days, schoolYearName, classId, clas
 
   if (monthGroups.length === 0) {
     return (
-      <p className="text-sm text-slate-500 text-center py-12">
-        Keine Kalenderdaten verfügbar.
-      </p>
+      <p className="text-sm text-slate-500 text-center py-12">Keine Kalenderdaten verfügbar.</p>
     );
   }
 
@@ -226,9 +244,7 @@ export default function SchoolYearCalendar({ days, schoolYearName, classId, clas
         </section>
       ))}
 
-      <p className="text-xs text-slate-400 text-center pt-2">
-        Schuljahr {schoolYearName}
-      </p>
+      <p className="text-xs text-slate-400 text-center pt-2">Schuljahr {schoolYearName}</p>
     </div>
   );
 }

@@ -3,14 +3,14 @@ import { de } from 'date-fns/locale';
 
 export interface WeekRow<TDay> {
   isoWeek: number;
-  monday: string;                // 'YYYY-MM-DD' — Monday of this ISO week
-  days: (TDay | null)[];        // 7 slots: Mon(0)…Sun(6); null = outside school year
+  monday: string; // 'YYYY-MM-DD' — Monday of this ISO week
+  days: (TDay | null)[]; // 7 slots: Mon(0)…Sun(6); null = outside school year
 }
 
 export interface MonthGroup<TDay> {
-  month: number;       // 0-based
+  month: number; // 0-based
   year: number;
-  label: string;       // e.g. "August 2025"
+  label: string; // e.g. "August 2025"
   weeks: WeekRow<TDay>[];
 }
 

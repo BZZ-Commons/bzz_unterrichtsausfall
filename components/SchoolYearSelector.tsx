@@ -26,7 +26,9 @@ export default function SchoolYearSelector({
                    focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition-colors"
       >
         {schoolYears.map((y) => (
-          <option key={y.id} value={y.id}>{y.name}</option>
+          <option key={y.id} value={y.id}>
+            {y.name}
+          </option>
         ))}
       </select>
     </div>

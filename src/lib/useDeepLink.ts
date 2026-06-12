@@ -50,7 +50,10 @@ export function useDeepLink({
   // Read all deep-link URL params once (from the bootstrap, before any fetch).
   const captureUrlParams = useCallback((): CapturedParams => {
     const urlParams = new URLSearchParams(window.location.search);
-    const getP = (k: string) => { const v = urlParams.get(k)?.trim(); return v?.length ? v : null; };
+    const getP = (k: string) => {
+      const v = urlParams.get(k)?.trim();
+      return v?.length ? v : null;
+    };
     pendingClassNameRef.current = getP('class');
     pendingCompanionNameRef.current = getP('companion');
     pendingViewModeRef.current = getP('view');

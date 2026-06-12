@@ -21,7 +21,7 @@ function createUntisClient(): WebUntis {
 
   if (!school || !username || !password || !baseUrl) {
     throw new Error(
-      'Missing WebUntis environment variables: WEBUNTIS_SCHOOL, WEBUNTIS_USERNAME, WEBUNTIS_PASSWORD, WEBUNTIS_BASE_URL'
+      'Missing WebUntis environment variables: WEBUNTIS_SCHOOL, WEBUNTIS_USERNAME, WEBUNTIS_PASSWORD, WEBUNTIS_BASE_URL',
     );
   }
 
@@ -48,10 +48,7 @@ export async function resolveSchoolyear(
  * Lightweight variant for callers that need only the year ID — skips the
  * `getSchoolyears` fetch when an ID is already provided.
  */
-export async function resolveSchoolyearId(
-  untis: WebUntis,
-  yearId: number | null,
-): Promise<number> {
+export async function resolveSchoolyearId(untis: WebUntis, yearId: number | null): Promise<number> {
   if (yearId !== null && !isNaN(yearId)) return yearId;
   return (await untis.getCurrentSchoolyear(true)).id;
 }
@@ -125,10 +122,18 @@ export async function withUntisClient<T>(fn: (untis: WebUntis) => Promise<T>): P
   await untis.login();
   try {
     const result = await fn(untis);
-    try { await untis.logout(); } catch { /* session may have expired during long fetch — ignore */ }
+    try {
+      await untis.logout();
+    } catch {
+      /* session may have expired during long fetch — ignore */
+    }
     return result;
   } catch (error) {
-    try { await untis.logout(); } catch { /* ignore secondary logout error */ }
+    try {
+      await untis.logout();
+    } catch {
+      /* ignore secondary logout error */
+    }
     throw error;
   }
 }

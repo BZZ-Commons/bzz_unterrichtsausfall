@@ -87,13 +87,17 @@ export default function IAVariantDialog({
                 disabled={!v.companion}
                 className={`w-full flex items-center gap-3 p-4 rounded-xl border border-slate-200 ${v.hoverClass} disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-transparent transition-all text-left`}
               >
-                <div className={`w-10 h-10 rounded-lg ${v.iconBgClass} flex items-center justify-center shrink-0`}>
+                <div
+                  className={`w-10 h-10 rounded-lg ${v.iconBgClass} flex items-center justify-center shrink-0`}
+                >
                   <Icon className={`w-5 h-5 ${v.iconColorClass}`} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-900">{v.label}</p>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {v.companion ? `${v.description} — mit ${v.companion.name}` : `${v.description} — nicht verfügbar`}
+                    {v.companion
+                      ? `${v.description} — mit ${v.companion.name}`
+                      : `${v.description} — nicht verfügbar`}
                   </p>
                 </div>
               </button>

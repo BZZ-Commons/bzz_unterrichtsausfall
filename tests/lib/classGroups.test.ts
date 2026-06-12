@@ -15,7 +15,10 @@ import type { UntisClass } from '@/src/types';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const makeClass = (id: number, name: string): UntisClass => ({
-  id, name, longName: '', active: true,
+  id,
+  name,
+  longName: '',
+  active: true,
 });
 
 // ─── track detection ──────────────────────────────────────────────────────────
@@ -98,15 +101,15 @@ describe('getCompanionNames', () => {
 
 describe('getCompanionClassIds', () => {
   const allClasses: UntisClass[] = [
-    makeClass(1,  'IA23 a'),
-    makeClass(2,  'IA23 b'),
-    makeClass(3,  'BM23 a'),
-    makeClass(4,  'BM23 b'),
-    makeClass(5,  'AB23 c'),
-    makeClass(6,  'ME22 b'),
-    makeClass(7,  'AB22 b'),
-    makeClass(8,  'BM24 a'),
-    makeClass(9,  'IA24 a'),
+    makeClass(1, 'IA23 a'),
+    makeClass(2, 'IA23 b'),
+    makeClass(3, 'BM23 a'),
+    makeClass(4, 'BM23 b'),
+    makeClass(5, 'AB23 c'),
+    makeClass(6, 'ME22 b'),
+    makeClass(7, 'AB22 b'),
+    makeClass(8, 'BM24 a'),
+    makeClass(9, 'IA24 a'),
     makeClass(10, 'IA24 b'),
   ];
 
@@ -211,10 +214,7 @@ describe('buildClassMap', () => {
   });
 
   it('builds a map keyed by normalized name', () => {
-    const classes: UntisClass[] = [
-      makeClass(1, 'IA23 a'),
-      makeClass(2, 'BM23 a'),
-    ];
+    const classes: UntisClass[] = [makeClass(1, 'IA23 a'), makeClass(2, 'BM23 a')];
     const map = buildClassMap(classes);
     expect(map.size).toBe(2);
     expect(map.get('ia23a')).toEqual(classes[0]);

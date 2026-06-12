@@ -12,7 +12,12 @@ interface ExportButtonProps {
   detailsMode?: boolean;
 }
 
-export default function ExportButton({ days, className, schoolYearName, detailsMode }: ExportButtonProps) {
+export default function ExportButton({
+  days,
+  className,
+  schoolYearName,
+  detailsMode,
+}: ExportButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {

@@ -83,9 +83,7 @@ export default function DayDetailsDialog({ day, schoolYearShort, onClose }: DayD
                 const cancelled = c.cancelledCount;
                 const total = c.lessonCount + c.cancelledCount;
                 const detail =
-                  total > 0
-                    ? `${cancelled} von ${total} Lektionen abgesagt`
-                    : 'Kein Unterricht';
+                  total > 0 ? `${cancelled} von ${total} Lektionen abgesagt` : 'Kein Unterricht';
                 return (
                   <li key={c.classId}>
                     <a
