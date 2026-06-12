@@ -2,15 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ViewMode } from '@/components/ViewToggle';
 import type { SchoolPeriod, SchoolYearSummary, UntisClass } from '@/src/types';
 import { fetchJson, isAbortError } from '@/src/lib/fetchJson';
-import { findSchoolYearByShort } from '@/src/lib/schoolYear';
-
-function pickDefaultSchoolYearId(years: SchoolYearSummary[]): number | null {
-  const today = Date.now();
-  const current = years.find(
-    (y) => new Date(y.startDate).getTime() <= today && today <= new Date(y.endDate).getTime(),
-  );
-  return current?.id ?? years[0]?.id ?? null;
-}
+import { findSchoolYearByShort, findDefaultSchoolYear } from '@/src/lib/schoolYear';
 
 interface YearDataArgs {
   /** Captures the deep-link URL params (class/companion/view) into refs and
@@ -131,7 +123,7 @@ export function useYearData({
         const fromUrl = urlYearShort
           ? (findSchoolYearByShort(urlYearShort, years)?.id ?? null)
           : null;
-        const yearId = fromUrl ?? pickDefaultSchoolYearId(years);
+        const yearId = fromUrl ?? findDefaultSchoolYear(years, Date.now())?.id ?? null;
         if (yearId == null) {
           setClassesLoading(false);
           return;

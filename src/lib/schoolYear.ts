@@ -33,6 +33,21 @@ export function isDraftSchoolYear(
 }
 
 /**
+ * The app's default/current school year: the one whose date range contains `now`,
+ * falling back to the most recent year in the list. `null` only when the list is
+ * empty. This is what the page preselects and what the logo "home" link targets.
+ */
+export function findDefaultSchoolYear(
+  years: ReadonlyArray<SchoolYearSummary>,
+  now: number,
+): SchoolYearSummary | null {
+  const current = years.find(
+    (y) => new Date(y.startDate).getTime() <= now && now <= new Date(y.endDate).getTime(),
+  );
+  return current ?? years[0] ?? null;
+}
+
+/**
  * Resolve a short form (e.g. `'25'`) back to a school year from the list,
  * or `null` if no matching year is known.
  */

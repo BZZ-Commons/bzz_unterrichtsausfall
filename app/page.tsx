@@ -13,7 +13,7 @@ import DayDetailsDialog from '@/components/DayDetailsDialog';
 import ExportButton from '@/components/ExportButton';
 import DraftNotice from '@/components/DraftNotice';
 import { isIAClass, isMEClass, isIMClass, getIAVariants } from '@/src/lib/classGroups';
-import { schoolYearShort, isDraftSchoolYear } from '@/src/lib/schoolYear';
+import { schoolYearShort, isDraftSchoolYear, findDefaultSchoolYear } from '@/src/lib/schoolYear';
 import { useMeasuredHeight } from '@/src/lib/useMeasuredHeight';
 import { useYearData } from '@/src/lib/useYearData';
 import { useCalendarData } from '@/src/lib/useCalendarData';
@@ -166,6 +166,13 @@ export default function HomePage() {
     [selectedSchoolYear],
   );
 
+  // Logo/title "home" link → the current school year's overview (drops class/view).
+  // Falls back to `/` until the year list has loaded.
+  const homeHref = useMemo(() => {
+    const current = findDefaultSchoolYear(schoolYears, Date.now());
+    return current ? `/?schoolyear=${schoolYearShort(current)}` : '/';
+  }, [schoolYears]);
+
   // The next school year's plan is published early as a draft — warn that the
   // shown cancellations may still change (until the end of the current year).
   // Computed inline rather than memoized so it reflects the current date.
@@ -214,7 +221,11 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100">
       <header className="bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-5 flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="flex items-center gap-3">
+          <a
+            href={homeHref}
+            title="Zur aktuellen Schuljahresübersicht"
+            className="flex items-center gap-3 transition-opacity hover:opacity-80"
+          >
             <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
               <CalendarDays className="w-5 h-5 text-indigo-600" />
             </div>
@@ -224,7 +235,7 @@ export default function HomePage() {
               </h1>
               <p className="text-xs text-slate-500">BZZ Bildungszentrum Zürichsee</p>
             </div>
-          </div>
+          </a>
 
           {schoolYears.length >= 2 && (
             <div className="sm:ml-auto">
