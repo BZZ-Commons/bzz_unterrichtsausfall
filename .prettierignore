@@ -1,0 +1,9 @@
+# build artifacts & deps
+.next/
+node_modules/
+coverage/
+tsconfig.tsbuildinfo
+
+# generated / binary-ish
+package-lock.json
+public/

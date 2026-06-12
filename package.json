@@ -11,7 +11,17 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,mjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,css,yml}": "prettier --write"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
@@ -34,8 +44,12 @@
     "@vitest/coverage-v8": "^4.1.8",
     "eslint": "^9.39.4",
     "eslint-config-next": "^15.5.18",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
     "jsdom": "^28.1.0",
+    "lint-staged": "^17.0.7",
     "postcss": "^8.4.31",
+    "prettier": "^3.8.4",
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2",
     "vitest": "^4.0.18"

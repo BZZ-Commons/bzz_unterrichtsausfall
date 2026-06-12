@@ -25,9 +25,14 @@ npm run typecheck    # TypeScript type-check (tsc --noEmit)
 npm run test         # Run all tests once
 npm run test:watch   # Watch mode
 npm run coverage     # Run tests with coverage report
+npm run format       # Prettier — write
+npm run format:check # Prettier — check only (used in CI)
 ```
 
+A husky pre-commit hook runs lint-staged (ESLint --fix + Prettier on staged files).
+
 Run a single test file:
+
 ```bash
 npx vitest run tests/lib/calendar.test.ts
 ```
@@ -55,17 +60,21 @@ tests/                    # Vitest unit tests
 ```
 
 ### Path alias
+
 `@/*` resolves to project root (e.g. `@/components/Foo`, `@/src/types`).
 
 ### WebUntis API pattern
+
 API routes wrap their WebUntis work in `withUntisClient(async (untis) => …)` from `src/lib/webuntis.ts` — it handles login/logout (incl. error paths). Routes return `NextResponse.json(...)`.
 
 ### Companion class rules
+
 `src/lib/classGroups.ts` defines `COMPANION_RULES` declaratively. To change which classes get merged, edit this array — no logic changes needed.
 
 IA classes are a special case: they're shown standalone in the dropdown, and the BM/ABU variant is picked via `IAVariantDialog` after selection (rules in `getIAVariants`).
 
 ### UI conventions
+
 - All user-facing text in **German** (Swiss school dialect)
 - Color palette: slate (neutrals) + indigo (primary) + emerald (BM/positive) + orange (Schulausfall) + violet (Ferien) + amber (Feiertag)
 

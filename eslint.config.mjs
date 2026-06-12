@@ -1,4 +1,5 @@
 import { FlatCompat } from '@eslint/eslintrc';
+import eslintConfigPrettier from 'eslint-config-prettier/flat';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -15,6 +16,8 @@ const config = [
     ignores: ['.next/', 'node_modules/', 'coverage/', 'next-env.d.ts'],
   },
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
+  // Last: turn off formatting rules — Prettier owns formatting.
+  eslintConfigPrettier,
 ];
 
 export default config;
