@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import McpRequestBadge from '@/components/McpRequestBadge';
 
 export default function SiteFooter() {
   const year = new Date().getFullYear();
@@ -21,6 +22,7 @@ export default function SiteFooter() {
           >
             bzz.ch
           </a>
+          <McpRequestBadge />
         </nav>
       </div>
     </footer>

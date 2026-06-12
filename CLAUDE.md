@@ -67,6 +67,12 @@ tests/                    # Vitest unit tests
 
 API routes wrap their WebUntis work in `withUntisClient(async (untis) => …)` from `src/lib/webuntis.ts` — it handles login/logout (incl. error paths). Routes return `NextResponse.json(...)`.
 
+### MCP server
+
+`/api/mcp` exposes the calendar data as MCP tools (Streamable HTTP via `mcp-handler`). Tool registrations, cached data accessors, class resolution, and rate limiting live in `src/lib/mcp/`. Rate limit: 20 req/min/IP (in-memory), bypassed via the `MCP_ADMIN_KEY` env var + `?key=` query param. MCP data uses the serverCache with a 15-min TTL.
+
+`/api/mcp-stats` returns the MCP request count of the last 15 minutes (in-memory, `src/lib/mcp/requestStats.ts`); `McpRequestBadge` shows it unobtrusively in the `SiteFooter`.
+
 ### Companion class rules
 
 `src/lib/classGroups.ts` defines `COMPANION_RULES` declaratively. To change which classes get merged, edit this array — no logic changes needed.
@@ -85,4 +91,5 @@ WEBUNTIS_SCHOOL=
 WEBUNTIS_USERNAME=
 WEBUNTIS_PASSWORD=
 WEBUNTIS_BASE_URL=
+MCP_ADMIN_KEY=      # optional — bypasses the MCP rate limit via ?key=<uuid>
 ```
