@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Loader2, CalendarDays } from 'lucide-react';
 import ClassSelector from '@/components/ClassSelector';
 import SchoolYearCalendar from '@/components/SchoolYearCalendar';
@@ -10,17 +10,20 @@ import IAVariantDialog from '@/components/IAVariantDialog';
 import ViewToggle, { type ViewMode } from '@/components/ViewToggle';
 import AggregatedCalendar from '@/components/AggregatedCalendar';
 import DayDetailsDialog from '@/components/DayDetailsDialog';
+import SingleDayDialog from '@/components/SingleDayDialog';
+import ErrorNotice from '@/components/ErrorNotice';
 import ExportButton from '@/components/ExportButton';
 import DraftNotice from '@/components/DraftNotice';
 import { isIAClass, isMEClass, isIMClass, getIAVariants } from '@/src/lib/classGroups';
 import { schoolYearShort, isDraftSchoolYear, findDefaultSchoolYear } from '@/src/lib/schoolYear';
+import { writeLastSelection } from '@/src/lib/lastSelection';
 import { useMeasuredHeight } from '@/src/lib/useMeasuredHeight';
 import { useYearData } from '@/src/lib/useYearData';
 import { useCalendarData } from '@/src/lib/useCalendarData';
 import { useAggregatedData } from '@/src/lib/useAggregatedData';
 import { useDeepLink } from '@/src/lib/useDeepLink';
 import { useUrlSync } from '@/src/lib/useUrlSync';
-import type { AggregatedDay, UntisClass } from '@/src/types';
+import type { AggregatedDay, CalendarDay, UntisClass } from '@/src/types';
 
 // Card header (title + actions + legend) — pinned on scroll above the calendar's
 // own sticky weekday row. Shared verbatim by the single- and aggregated-view cards.
@@ -32,6 +35,10 @@ export default function HomePage() {
   const [detailsMode, setDetailsMode] = useState(false);
   const [iaDialogClass, setIaDialogClass] = useState<UntisClass | null>(null);
   const [selectedAggregatedDay, setSelectedAggregatedDay] = useState<AggregatedDay | null>(null);
+  const [selectedSingleDay, setSelectedSingleDay] = useState<{
+    day: CalendarDay;
+    monday: string;
+  } | null>(null);
 
   // ── Cross-hook wiring ──────────────────────────────────────────────────────
   // `useYearData` owns `selectedSchoolYearId` and the bootstrap, but its year
@@ -52,6 +59,7 @@ export default function HomePage() {
     classesError,
     periods,
     handleSchoolYearChange,
+    reloadYearData,
   } = useYearData({
     captureUrlParams: useCallback(() => wiringRef.current!.captureUrlParams(), []),
     setDetailsMode,
@@ -117,6 +125,7 @@ export default function HomePage() {
     resetAggregated();
     setIaDialogClass(null);
     setSelectedAggregatedDay(null);
+    setSelectedSingleDay(null);
   }, [abortCalendar, abortAggregated, resetCalendar, resetAggregated]);
 
   // Publish the live back-edges for `useYearData` to call through the ref.
@@ -183,6 +192,21 @@ export default function HomePage() {
   const selectedCompanion =
     selectedFetchIds?.length === 2 ? classes.find((c) => c.id === selectedFetchIds[1]) : null;
 
+  // Remember the selection (incl. the IA BM/ABU pick) so the next param-less
+  // visit restores it (see useDeepLink).
+  useEffect(() => {
+    if (!selectedClass) return;
+    writeLastSelection({
+      className: selectedClass.name,
+      companionName: selectedCompanion?.name,
+    });
+  }, [selectedClass, selectedCompanion]);
+
+  const handleDaySelect = useCallback(
+    (day: CalendarDay, monday: string) => setSelectedSingleDay({ day, monday }),
+    [],
+  );
+
   // Sync URL with current state so it stays shareable / copy-pasteable.
   useUrlSync({
     selectedSchoolYearShort,
@@ -209,11 +233,13 @@ export default function HomePage() {
   } as React.CSSProperties;
 
   const showSingleEmptyState = viewMode === 'single' && !selectedClassId && !calendarLoading;
+  // While a class switch reloads, the previous calendar stays visible (dimmed,
+  // spinner in the card header) — the full-page spinner only covers the first load.
   const showSingleCalendar =
-    viewMode === 'single' && calendarData && !calendarLoading && selectedClassId != null;
+    viewMode === 'single' && calendarData && selectedClassId != null && !calendarError;
   const showAggregatedCalendar = viewMode === 'all' && aggregatedData && !aggregatedLoading;
   const showAggregatedLoading = viewMode === 'all' && aggregatedLoading;
-  const showSingleLoading = viewMode === 'single' && calendarLoading;
+  const showSingleLoading = viewMode === 'single' && calendarLoading && !calendarData;
   const showSingleError = viewMode === 'single' && calendarError && !calendarLoading;
   const showAggregatedError = viewMode === 'all' && aggregatedError && !aggregatedLoading;
 
@@ -254,9 +280,16 @@ export default function HomePage() {
           <ViewToggle value={viewMode} onChange={handleViewModeChange} />
           {viewMode === 'single' &&
             (classesError ? (
-              <p className="sm:ml-auto text-sm text-red-600 flex items-center gap-1">
+              <p className="sm:ml-auto text-sm text-red-600 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
                 {classesError}
+                <button
+                  type="button"
+                  onClick={reloadYearData}
+                  className="font-medium underline hover:text-red-700 transition-colors"
+                >
+                  Erneut versuchen
+                </button>
               </p>
             ) : (
               <ClassSelector
@@ -297,24 +330,15 @@ export default function HomePage() {
           </div>
         )}
 
-        {showSingleError && (
-          <div className="max-w-lg mx-auto mt-8 p-5 bg-red-50 border border-red-200 rounded-xl flex gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">Fehler beim Laden</p>
-              <p className="text-sm text-red-600 mt-0.5">{calendarError}</p>
-            </div>
-          </div>
+        {showSingleError && calendarError && (
+          <ErrorNotice
+            message={calendarError}
+            onRetry={selectedFetchIds ? () => void loadCalendar(selectedFetchIds) : undefined}
+          />
         )}
 
-        {showAggregatedError && (
-          <div className="max-w-lg mx-auto mt-8 p-5 bg-red-50 border border-red-200 rounded-xl flex gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-red-800">Fehler beim Laden</p>
-              <p className="text-sm text-red-600 mt-0.5">{aggregatedError}</p>
-            </div>
-          </div>
+        {showAggregatedError && aggregatedError && (
+          <ErrorNotice message={aggregatedError} onRetry={() => void loadAggregated()} />
         )}
 
         {showSingleCalendar && calendarData && selectedClassId != null && (
@@ -335,6 +359,14 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="sm:ml-auto flex flex-wrap items-center gap-3">
+                {/* Reload indicator while another class's data is fetched (the
+                    previous calendar stays visible, dimmed, below). */}
+                {calendarLoading && (
+                  <Loader2
+                    className="w-4 h-4 text-indigo-400 animate-spin"
+                    aria-label="Lade Stundenplan …"
+                  />
+                )}
                 {/* Details mode has no UI toggle — it is controlled only via the
                     `?details=true` URL parameter (see useDeepLink / useUrlSync). */}
                 <ExportButton
@@ -347,19 +379,25 @@ export default function HomePage() {
               </div>
             </div>
 
-            <SchoolYearCalendar
-              days={calendarData.days}
-              schoolYearName={calendarData.schoolYear.name}
-              classId={selectedClassId}
-              classNamesById={classNamesById}
-              detailsMode={detailsMode}
-              periods={periods}
-              showQuarterDividers={
-                isIAClass(selectedClass?.name ?? '') ||
-                isMEClass(selectedClass?.name ?? '') ||
-                isIMClass(selectedClass?.name ?? '')
-              }
-            />
+            <div
+              className={`transition-opacity ${calendarLoading ? 'opacity-50 pointer-events-none' : ''}`}
+              aria-busy={calendarLoading}
+            >
+              <SchoolYearCalendar
+                days={calendarData.days}
+                schoolYearName={calendarData.schoolYear.name}
+                classId={selectedClassId}
+                classNamesById={classNamesById}
+                detailsMode={detailsMode}
+                periods={periods}
+                showQuarterDividers={
+                  isIAClass(selectedClass?.name ?? '') ||
+                  isMEClass(selectedClass?.name ?? '') ||
+                  isIMClass(selectedClass?.name ?? '')
+                }
+                onDaySelect={handleDaySelect}
+              />
+            </div>
           </div>
         )}
 
@@ -407,6 +445,16 @@ export default function HomePage() {
           day={selectedAggregatedDay}
           schoolYearShort={schoolYearShort(aggregatedData.schoolYear)}
           onClose={() => setSelectedAggregatedDay(null)}
+        />
+      )}
+
+      {selectedSingleDay && selectedClassId != null && (
+        <SingleDayDialog
+          day={selectedSingleDay.day}
+          monday={selectedSingleDay.monday}
+          fallbackClassId={selectedClassId}
+          classNamesById={classNamesById}
+          onClose={() => setSelectedSingleDay(null)}
         />
       )}
     </div>

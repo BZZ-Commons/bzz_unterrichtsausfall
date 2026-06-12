@@ -19,32 +19,42 @@ export default function ExportButton({
   detailsMode,
 }: ExportButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState(false);
 
   const handleExport = async () => {
     if (isExporting) return;
     setIsExporting(true);
+    setExportError(false);
     try {
       await exportCalendarToExcel(days, className, schoolYearName, detailsMode);
     } catch (err) {
       console.error('Excel-Export fehlgeschlagen:', err);
+      setExportError(true);
     } finally {
       setIsExporting(false);
     }
   };
 
   return (
-    <button
-      onClick={() => void handleExport()}
-      disabled={isExporting}
-      title="Als Excel exportieren"
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      {isExporting ? (
-        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-      ) : (
-        <Download className="w-4 h-4" aria-hidden="true" />
+    <div className="inline-flex items-center gap-2">
+      <button
+        onClick={() => void handleExport()}
+        disabled={isExporting}
+        title="Als Excel exportieren"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isExporting ? (
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+        ) : (
+          <Download className="w-4 h-4" aria-hidden="true" />
+        )}
+        Excel
+      </button>
+      {exportError && (
+        <p role="alert" className="text-xs text-red-600">
+          Export fehlgeschlagen — bitte erneut versuchen.
+        </p>
       )}
-      Excel
-    </button>
+    </div>
   );
 }

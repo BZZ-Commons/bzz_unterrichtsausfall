@@ -155,6 +155,20 @@ export function useYearData({
     [selectedSchoolYearId, onYearSwitch, loadYearData, viewMode, loadAggregated],
   );
 
+  // Retry after a failed classes/periods load — re-fetches the current year's
+  // data in place. If the bootstrap itself failed (no year resolved yet), a
+  // full reload is the only way to re-run it.
+  const reloadYearData = useCallback(() => {
+    if (selectedSchoolYearId == null) {
+      window.location.reload();
+      return;
+    }
+    classesAbortRef.current?.abort();
+    const controller = new AbortController();
+    classesAbortRef.current = controller;
+    void loadYearData(selectedSchoolYearId, controller.signal);
+  }, [selectedSchoolYearId, loadYearData]);
+
   return {
     schoolYears,
     selectedSchoolYearId,
@@ -163,5 +177,6 @@ export function useYearData({
     classesError,
     periods,
     handleSchoolYearChange,
+    reloadYearData,
   };
 }

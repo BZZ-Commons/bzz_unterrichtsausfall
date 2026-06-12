@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import SchoolYearCalendar from '@/components/SchoolYearCalendar';
 import type { CalendarDay } from '@/src/types';
 
@@ -50,6 +50,10 @@ const WEEK38_DAYS: CalendarDay[] = [
 
 const ALL_DAYS = [...WEEK37_DAYS, ...WEEK38_DAYS];
 
+/** The day-cell button whose title names the given class. */
+const findDayButtonByTitle = (needle: string) =>
+  screen.getAllByRole('button').find((b) => b.getAttribute('title')?.includes(needle));
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('SchoolYearCalendar — structure and headers', () => {
@@ -96,10 +100,25 @@ describe('SchoolYearCalendar — structure and headers', () => {
     render(<SchoolYearCalendar days={[]} schoolYearName="2025/26" classId={CLASS_A_ID} />);
     expect(screen.getByText('Keine Kalenderdaten verfügbar.')).toBeInTheDocument();
   });
+
+  it('day cells are buttons, not external links', () => {
+    render(
+      <SchoolYearCalendar
+        days={ALL_DAYS}
+        schoolYearName="2025/26"
+        classId={CLASS_A_ID}
+        classNamesById={classNamesById}
+      />,
+    );
+    // The only links left are the KW week links.
+    for (const link of screen.getAllByRole('link')) {
+      expect(['37', '38']).toContain(link.textContent?.trim());
+    }
+  });
 });
 
 describe('SchoolYearCalendar — normal day cell', () => {
-  it('renders a link with href pointing to linkClassId and title with class name + tooltip', () => {
+  it('renders a button whose title carries the class name + tooltip', () => {
     const days: CalendarDay[] = [
       mkDay('2025-09-08', {
         type: 'normal',
@@ -120,53 +139,41 @@ describe('SchoolYearCalendar — normal day cell', () => {
       />,
     );
 
-    const links = screen.getAllByRole('link');
-    // The day-cell link for 2025-09-08 should carry the class name and lesson info
-    const dayLink = links.find(
-      (a) =>
-        a.getAttribute('href')?.includes(String(CLASS_A_ID)) &&
-        a.getAttribute('title')?.includes('IA25a'),
-    );
-    expect(dayLink).toBeDefined();
-    const title = dayLink!.getAttribute('title') ?? '';
+    const dayButton = findDayButtonByTitle('IA25a');
+    expect(dayButton).toBeDefined();
+    const title = dayButton!.getAttribute('title') ?? '';
     expect(title).toContain('IA25a');
     // buildDayTooltip: "5 Lektionen, 1 abgesagt"
     expect(title).toContain('Lektionen');
     expect(title).toContain('abgesagt');
-
-    // href uses linkClassId (CLASS_A_ID)
-    expect(dayLink).toHaveAttribute('href', expect.stringContaining(String(CLASS_A_ID)));
   });
 
-  it('falls back to classId when linkClassId is absent', () => {
-    const FALLBACK_ID = 999;
-    const days: CalendarDay[] = [
-      mkDay('2025-09-08', { type: 'normal', lessonCount: 3 }), // no linkClassId
-      ...WEEK37_DAYS.slice(1),
-    ];
-
+  it('clicking a day cell calls onDaySelect with the day and its week Monday', () => {
+    const onDaySelect = vi.fn();
     render(
       <SchoolYearCalendar
-        days={days}
+        days={ALL_DAYS}
         schoolYearName="2025/26"
-        classId={FALLBACK_ID}
+        classId={CLASS_A_ID}
         classNamesById={classNamesById}
+        onDaySelect={onDaySelect}
       />,
     );
 
-    // The day link should point to the fallback classId
-    const links = screen.getAllByRole('link');
-    const dayLink = links.find(
-      (a) =>
-        a.getAttribute('href')?.includes(String(FALLBACK_ID)) && a.textContent?.trim() === '08',
+    const dayButton = screen.getAllByRole('button').find((b) => b.textContent?.trim() === '17');
+    expect(dayButton).toBeDefined();
+    fireEvent.click(dayButton!);
+
+    expect(onDaySelect).toHaveBeenCalledOnce();
+    expect(onDaySelect).toHaveBeenCalledWith(
+      expect.objectContaining({ date: '2025-09-17' }),
+      WEEK38_MON,
     );
-    expect(dayLink).toBeDefined();
-    expect(dayLink).toHaveAttribute('href', expect.stringContaining(String(FALLBACK_ID)));
   });
 });
 
 describe('SchoolYearCalendar — split day (halfDay)', () => {
-  it('renders two links for a split day, each pointing to its own classId', () => {
+  it('renders ONE button per split day with a combined Vormittag/Nachmittag tooltip', () => {
     const days: CalendarDay[] = [
       {
         date: '2025-09-08',
@@ -179,40 +186,32 @@ describe('SchoolYearCalendar — split day (halfDay)', () => {
       ...WEEK37_DAYS.slice(1),
     ];
 
+    const onDaySelect = vi.fn();
     render(
       <SchoolYearCalendar
         days={days}
         schoolYearName="2025/26"
         classId={CLASS_A_ID}
         classNamesById={classNamesById}
+        onDaySelect={onDaySelect}
       />,
     );
 
-    const links = screen.getAllByRole('link');
-    // Find the two half-day links (both within the split cell for that day)
-    const halfLinks = links.filter(
-      (a) =>
-        a.getAttribute('href')?.includes(String(CLASS_A_ID)) ||
-        a.getAttribute('href')?.includes(String(CLASS_B_ID)),
+    const splitButton = findDayButtonByTitle('Vormittag');
+    expect(splitButton).toBeDefined();
+    const title = splitButton!.getAttribute('title') ?? '';
+    // Both halves with their class names and status in one tooltip
+    expect(title).toContain('IA25a · Vormittag: Unterricht');
+    expect(title).toContain('BM25a · Nachmittag: Unterricht');
+
+    fireEvent.click(splitButton!);
+    expect(onDaySelect).toHaveBeenCalledWith(
+      expect.objectContaining({ date: '2025-09-08' }),
+      WEEK37_MON,
     );
-    // At minimum two links pointing at A and B
-    const aLink = halfLinks.find((a) => a.getAttribute('title')?.includes('Vormittag'));
-    const bLink = halfLinks.find((a) => a.getAttribute('title')?.includes('Nachmittag'));
-
-    expect(aLink).toBeDefined();
-    expect(bLink).toBeDefined();
-
-    // Morning → CLASS_A_ID
-    expect(aLink).toHaveAttribute('href', expect.stringContaining(String(CLASS_A_ID)));
-    // Afternoon → CLASS_B_ID
-    expect(bLink).toHaveAttribute('href', expect.stringContaining(String(CLASS_B_ID)));
-
-    // tooltips contain "Unterricht"
-    expect(aLink!.getAttribute('title')).toContain('Unterricht');
-    expect(bLink!.getAttribute('title')).toContain('Unterricht');
   });
 
-  it('split day with "none" afternoon: afternoon link has no title, morning keeps its tooltip', () => {
+  it('split day with "none" afternoon: tooltip names only the morning, halves keep their colors', () => {
     const days: CalendarDay[] = [
       {
         date: '2025-09-08',
@@ -234,28 +233,18 @@ describe('SchoolYearCalendar — split day (halfDay)', () => {
       />,
     );
 
-    // Morning link has a Vormittag tooltip
-    const links = screen.getAllByRole('link');
-    const morningLink = links.find((a) => a.getAttribute('title')?.includes('Vormittag'));
-    expect(morningLink).toBeDefined();
-    expect(morningLink!.getAttribute('title')).toContain('Unterricht');
+    const splitButton = findDayButtonByTitle('Vormittag');
+    expect(splitButton).toBeDefined();
+    const title = splitButton!.getAttribute('title') ?? '';
+    expect(title).toContain('Unterricht');
+    // The empty half says nothing (kein "frei" in the tooltip)
+    expect(title).not.toContain('Nachmittag');
 
-    // Afternoon link (none status) has no title attribute.
-    // none half: background should be HALF_DAY_COLORS.none = '#f8fafc'
-    // Find all links that are flex-1 halves (they don't have text content)
-    const halfLinks = links.filter((a) => a.getAttribute('class')?.includes('flex-1'));
-    expect(halfLinks).toHaveLength(2);
-
-    // One half has a title, the other does not
-    const titledHalf = halfLinks.find((a) => !!a.getAttribute('title'));
-    const untitledHalf = halfLinks.find((a) => !a.getAttribute('title'));
-    expect(titledHalf).toBeDefined();
-    expect(untitledHalf).toBeDefined();
-
-    // The untitled half (none) should have the slate-50 background
-    expect(untitledHalf).toHaveStyle({ background: '#f8fafc' });
-    // The titled half (lessons) should have emerald-100 background
-    expect(titledHalf).toHaveStyle({ background: '#d1fae5' });
+    // The two half spans carry their status backgrounds (morning first).
+    const halves = splitButton!.querySelectorAll('span[style]');
+    expect(halves).toHaveLength(2);
+    expect(halves[0]).toHaveStyle({ background: '#d1fae5' }); // lessons → emerald-100
+    expect(halves[1]).toHaveStyle({ background: '#f8fafc' }); // none → slate-50
   });
 
   it('cancelled half with reason: reason text renders on the cell, tooltip contains "fällt aus" and the reason', () => {
@@ -284,12 +273,11 @@ describe('SchoolYearCalendar — split day (halfDay)', () => {
     // The reason text should appear somewhere in the cell (onlyOneCancelled path)
     expect(screen.getByText(reason)).toBeInTheDocument();
 
-    // Afternoon link tooltip contains "fällt aus" and the reason
-    const links = screen.getAllByRole('link');
-    const cancelledLink = links.find((a) => a.getAttribute('title')?.includes('fällt aus'));
-    expect(cancelledLink).toBeDefined();
-    expect(cancelledLink!.getAttribute('title')).toContain('fällt aus');
-    expect(cancelledLink!.getAttribute('title')).toContain(reason);
+    // Tooltip contains "fällt aus" and the reason
+    const splitButton = findDayButtonByTitle('fällt aus');
+    expect(splitButton).toBeDefined();
+    expect(splitButton!.getAttribute('title')).toContain('fällt aus');
+    expect(splitButton!.getAttribute('title')).toContain(reason);
   });
 
   it('both halves cancelled with different reasons: combined reason "A / B" is rendered', () => {
@@ -372,11 +360,10 @@ describe('SchoolYearCalendar — detailsMode partial cancellations', () => {
       />,
     );
 
-    // Without detailsMode: day-cell link should NOT have bg-pink-200
-    const links = screen.getAllByRole('link');
-    const dayLink = links.find((a) => a.getAttribute('title')?.includes('IA25a'));
-    expect(dayLink).toBeDefined();
-    expect(dayLink!.className).not.toContain('bg-pink-200');
+    // Without detailsMode: day-cell button should NOT have bg-pink-200
+    const dayButton = findDayButtonByTitle('IA25a');
+    expect(dayButton).toBeDefined();
+    expect(dayButton!.className).not.toContain('bg-pink-200');
 
     // With detailsMode: should now have bg-pink-200
     rerender(
@@ -389,10 +376,9 @@ describe('SchoolYearCalendar — detailsMode partial cancellations', () => {
       />,
     );
 
-    const linksAfter = screen.getAllByRole('link');
-    const dayLinkAfter = linksAfter.find((a) => a.getAttribute('title')?.includes('IA25a'));
-    expect(dayLinkAfter).toBeDefined();
-    expect(dayLinkAfter!.className).toContain('bg-pink-200');
+    const dayButtonAfter = findDayButtonByTitle('IA25a');
+    expect(dayButtonAfter).toBeDefined();
+    expect(dayButtonAfter!.className).toContain('bg-pink-200');
   });
 });
 
@@ -462,7 +448,7 @@ describe('SchoolYearCalendar — special day types', () => {
     expect(screen.getByText('Herbstferien')).toBeInTheDocument();
   });
 
-  it('ferien day link title contains the holiday name', () => {
+  it('ferien day button title contains the holiday name', () => {
     const days: CalendarDay[] = [
       mkDay('2025-09-08', {
         type: 'ferien',
@@ -482,9 +468,8 @@ describe('SchoolYearCalendar — special day types', () => {
     );
 
     // Title is "[className] · [holidayName]" when classNamesById is provided.
-    const links = screen.getAllByRole('link');
-    const holidayLink = links.find((a) => a.getAttribute('title')?.includes('Herbstferien'));
-    expect(holidayLink).toBeDefined();
-    expect(holidayLink!.getAttribute('title')).toContain('Herbstferien');
+    const holidayButton = findDayButtonByTitle('Herbstferien');
+    expect(holidayButton).toBeDefined();
+    expect(holidayButton!.getAttribute('title')).toContain('Herbstferien');
   });
 });

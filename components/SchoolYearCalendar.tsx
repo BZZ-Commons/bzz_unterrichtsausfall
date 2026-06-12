@@ -3,42 +3,42 @@
 import { memo, useMemo } from 'react';
 import { buildDayTooltip, halfStatusLabel } from '@/src/lib/calendar';
 import { buildMonthGroups, DOW_LABELS } from '@/src/lib/calendar-layout';
+import { untisWeekHref } from '@/src/lib/untisLinks';
 import { DAY_STYLES, PARTIAL_CANCEL_STYLE, HALF_DAY_COLORS } from '@/src/lib/calendar-styles';
 import { PeriodDivider, buildDividerMap } from '@/components/PeriodDivider';
 import type { CalendarDay, DayHalf, SchoolPeriod } from '@/src/types';
-
-function untisWeekHref(monday: string, classId: number): string {
-  return `https://bzz.webuntis.com/WebUntis?school=bzz#/basic/timetablePublic/class?date=${monday}&entityId=${classId}`;
-}
 
 // ─── Day cell ─────────────────────────────────────────────────────────────────
 
 interface DayCellProps {
   day: CalendarDay | null;
-  /** Monday of this cell's week — used to build links to any class's week view. */
+  /** Monday of this cell's week — passed along to the day-details dialog. */
   monday: string;
-  /** Selected class — link target for days/halves that have no class of their own. */
-  fallbackClassId: number;
   classNamesById?: Map<number, string>;
   detailsMode?: boolean;
+  /** Opens the day-details dialog (status, reason, WebUntis links). */
+  onSelect?: (day: CalendarDay, monday: string) => void;
 }
+
+const FOCUS_RING_CLASS = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400';
 
 const DayCell = memo(function DayCell({
   day,
   monday,
-  fallbackClassId,
   classNamesById,
   detailsMode,
+  onSelect,
 }: DayCellProps) {
   if (!day) {
     return <div className="h-9 w-full rounded-lg bg-white" />;
   }
 
   const dayNum = day.date.slice(8); // last 2 chars = day number
-  const hrefFor = (id?: number) => untisWeekHref(monday, id ?? fallbackClassId);
   const classNameOf = (id?: number) => (id != null ? classNamesById?.get(id) : undefined);
+  const select = () => onSelect?.(day, monday);
 
-  // Split day: two side-by-side links (Vormittag | Nachmittag), each to its own class.
+  // Split day: two side-by-side halves (Vormittag | Nachmittag) — one button,
+  // details (incl. per-class WebUntis links) live in the dialog.
   if (day.halfDay) {
     const { morning, afternoon } = day.halfDay;
     // An empty half ('none') looks like a non-school day — no tooltip (kein "frei").
@@ -48,13 +48,12 @@ const DayCell = memo(function DayCell({
       const reason = h.reason ? ` (${h.reason})` : '';
       return `${cls ? `${cls} · ` : ''}${period}: ${halfStatusLabel(h.status)}${reason}`;
     };
-    // A 'none' (empty) half has no class of its own → link it to the day's active class.
-    const leftId = morning.classId ?? afternoon.classId;
-    const rightId = afternoon.classId ?? morning.classId;
-    const leftTip = halfTip('Vormittag', morning);
-    const rightTip = halfTip('Nachmittag', afternoon);
+    const cellTip =
+      [halfTip('Vormittag', morning), halfTip('Nachmittag', afternoon)]
+        .filter(Boolean)
+        .join('\n') || undefined;
     const bothCancelled = morning.status === 'cancelled' && afternoon.status === 'cancelled';
-    // Exactly one half cancelled → its reason sits centred on that half (full text in its tooltip).
+    // Exactly one half cancelled → its reason sits centred on that half (full text in the dialog).
     const onlyOneCancelled =
       (morning.status === 'cancelled') !== (afternoon.status === 'cancelled');
     // A fully-cancelled day (both halves orange) gets orange text + a combined reason under the number.
@@ -64,17 +63,8 @@ const DayCell = memo(function DayCell({
         ? `${morning.reason} / ${afternoon.reason}`
         : (morning.reason ?? afternoon.reason)
       : undefined;
-    // Both halves are identical links apart from their data — render via one helper.
-    const renderHalf = (h: DayHalf, id: number | undefined, tip: string | undefined) => (
-      <a
-        href={hrefFor(id)}
-        target="_blank"
-        rel="noopener noreferrer"
-        title={tip}
-        aria-label={tip}
-        className="relative flex-1 transition-opacity hover:opacity-70 cursor-pointer"
-        style={{ background: HALF_DAY_COLORS[h.status] }}
-      >
+    const renderHalf = (h: DayHalf) => (
+      <span className="relative flex-1" style={{ background: HALF_DAY_COLORS[h.status] }}>
         {onlyOneCancelled && h.reason && (
           <span className="absolute inset-0 flex items-center justify-center px-0.5 text-orange-800">
             <span className="text-[8px] font-medium leading-tight text-center w-full truncate">
@@ -82,13 +72,19 @@ const DayCell = memo(function DayCell({
             </span>
           </span>
         )}
-      </a>
+      </span>
     );
     return (
-      <div className="relative w-full rounded-lg overflow-hidden flex min-h-9 select-none">
-        {renderHalf(morning, leftId, leftTip)}
+      <button
+        type="button"
+        onClick={select}
+        title={cellTip}
+        aria-label={cellTip}
+        className={`relative w-full rounded-lg overflow-hidden flex min-h-9 select-none cursor-pointer transition-opacity hover:opacity-70 ${FOCUS_RING_CLASS}`}
+      >
+        {renderHalf(morning)}
         <span className="w-px shrink-0 bg-slate-400/60" aria-hidden="true" />
-        {renderHalf(afternoon, rightId, rightTip)}
+        {renderHalf(afternoon)}
         <span
           className={`absolute inset-0 flex flex-col items-center justify-center px-0.5 pointer-events-none ${overlayText}`}
         >
@@ -99,7 +95,7 @@ const DayCell = memo(function DayCell({
             </span>
           )}
         </span>
-      </div>
+      </button>
     );
   }
 
@@ -121,12 +117,11 @@ const DayCell = memo(function DayCell({
     [classNameOf(day.linkClassId), buildDayTooltip(day)].filter(Boolean).join(' · ') || undefined;
 
   return (
-    <a
-      href={hrefFor(day.linkClassId)}
-      target="_blank"
-      rel="noopener noreferrer"
+    <button
+      type="button"
+      onClick={select}
       title={tooltip}
-      className={`${baseClass} cursor-pointer`}
+      className={`${baseClass} cursor-pointer ${FOCUS_RING_CLASS}`}
     >
       <span>{dayNum}</span>
       {(day.holidayName || day.type === 'unterrichtsausfall' || day.type === 'veranstaltung') && (
@@ -134,7 +129,7 @@ const DayCell = memo(function DayCell({
           {day.holidayName ?? day.eventName ?? 'kein Unterricht'}
         </span>
       )}
-    </a>
+    </button>
   );
 });
 
@@ -143,13 +138,15 @@ const DayCell = memo(function DayCell({
 interface SchoolYearCalendarProps {
   days: CalendarDay[];
   schoolYearName: string;
-  /** Selected class — the link fallback and the KW week-link target. */
+  /** Selected class — the KW week-link target. */
   classId: number;
   /** id → class name, for naming the link target in day tooltips. */
   classNamesById?: Map<number, string>;
   detailsMode?: boolean;
   periods?: SchoolPeriod[];
   showQuarterDividers?: boolean;
+  /** Called when a day cell is clicked/tapped — opens the day-details dialog. */
+  onDaySelect?: (day: CalendarDay, monday: string) => void;
 }
 
 export default function SchoolYearCalendar({
@@ -160,6 +157,7 @@ export default function SchoolYearCalendar({
   detailsMode,
   periods,
   showQuarterDividers = false,
+  onDaySelect,
 }: SchoolYearCalendarProps) {
   const monthGroups = useMemo(() => buildMonthGroups(days), [days]);
   const dividerMap = useMemo(
@@ -230,9 +228,9 @@ export default function SchoolYearCalendar({
                           key={day?.date ?? `empty-${week.isoWeek}-${i}`}
                           day={day}
                           monday={week.monday}
-                          fallbackClassId={classId}
                           classNamesById={classNamesById}
                           detailsMode={detailsMode}
+                          onSelect={onDaySelect}
                         />
                       ))}
                     </div>

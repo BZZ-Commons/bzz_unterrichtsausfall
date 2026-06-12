@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { ViewMode } from '@/components/ViewToggle';
 import type { UntisClass } from '@/src/types';
 import { isIAClass, normalize } from '@/src/lib/classGroups';
+import { readLastSelection } from '@/src/lib/lastSelection';
 
 interface CapturedParams {
   /** `?schoolyear=` short form (e.g. "25"), or null — resolved by the bootstrap. */
@@ -21,7 +22,9 @@ interface DeepLinkArgs {
 
 /**
  * Owns the popup deep-link: the pending `?class` / `?companion` / `?view` refs
- * and the effect that consumes them exactly once after classes load.
+ * and the effect that consumes them exactly once after classes load. On a bare
+ * URL (no query at all) the refs are seeded from the last stored selection
+ * instead (see `lastSelection.ts`).
  *
  * Invariants:
  *  - `captureUrlParams()` is called ONCE from the bootstrap, before any fetch,
@@ -57,6 +60,16 @@ export function useDeepLink({
     pendingClassNameRef.current = getP('class');
     pendingCompanionNameRef.current = getP('companion');
     pendingViewModeRef.current = getP('view');
+    // Fresh visit without ANY params (bare `/`) → restore the last selection from
+    // localStorage through the same resolution path as a `?class=` deep link.
+    // Param-carrying URLs (shared links, the logo's reset link) stay untouched.
+    if (!window.location.search && pendingClassNameRef.current == null) {
+      const last = readLastSelection();
+      if (last) {
+        pendingClassNameRef.current = last.className;
+        pendingCompanionNameRef.current = last.companionName ?? null;
+      }
+    }
     return {
       urlYearShort: getP('schoolyear'),
       detailsRequested: getP('details') != null,

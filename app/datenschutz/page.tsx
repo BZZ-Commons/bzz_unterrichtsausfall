@@ -46,11 +46,16 @@ export default function DatenschutzPage() {
         <p>
           Diese Anwendung setzt keine Cookies, verwendet keine Analyse- oder Tracking-Werkzeuge und
           bindet keine Drittanbieter-Dienste (z. B. externe Schriftarten, Karten oder Social-Media-
-          Plugins) ein. Für die Zwischenspeicherung der Ansicht wird ausschliesslich der lokale{' '}
+          Plugins) ein. Für die Zwischenspeicherung der Ansicht wird der lokale{' '}
           <code className="rounded bg-slate-100 px-1 py-0.5 text-xs text-slate-600">
             sessionStorage
           </code>{' '}
-          Ihres Browsers verwendet; diese Daten verlassen Ihr Gerät nicht.
+          Ihres Browsers verwendet; zusätzlich merkt sich der{' '}
+          <code className="rounded bg-slate-100 px-1 py-0.5 text-xs text-slate-600">
+            localStorage
+          </code>{' '}
+          die zuletzt gewählte Klasse, damit sie beim nächsten Besuch vorausgewählt ist. Diese Daten
+          verlassen Ihr Gerät nicht.
         </p>
       </section>
 
