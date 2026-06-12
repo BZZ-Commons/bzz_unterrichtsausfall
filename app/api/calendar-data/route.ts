@@ -66,7 +66,11 @@ export async function GET(request: Request): Promise<NextResponse> {
       } satisfies CalendarData;
     });
 
-    return NextResponse.json(result);
+    // Single-class data is deliberately uncached at every layer (no server cache,
+    // no client cache) — each request hits WebUntis live. Only the slow
+    // "Alle Klassen" aggregate (calendar-data-all) is cached. `no-store` makes
+    // that guarantee explicit to browsers/proxies too.
+    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to fetch calendar data';
     console.error('Error fetching calendar data:', error);
