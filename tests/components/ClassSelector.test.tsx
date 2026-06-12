@@ -87,3 +87,27 @@ describe('ClassSelector — prev/next arrows', () => {
     expect(onChange).toHaveBeenLastCalledWith(2);
   });
 });
+
+describe('ClassSelector — Enter selects the typed class', () => {
+  it('picks the top filtered match on Enter without arrowing', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(<ClassSelector classes={classes} selectedId={null} onChange={onChange} />);
+    await user.click(trigger());
+
+    await user.keyboard('ME');
+    await user.keyboard('{Enter}');
+    expect(onChange).toHaveBeenCalledWith(2); // ME23 a
+  });
+
+  it('does nothing on Enter when the query matches no class', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(<ClassSelector classes={classes} selectedId={null} onChange={onChange} />);
+    await user.click(trigger());
+
+    await user.keyboard('zzz');
+    await user.keyboard('{Enter}');
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});

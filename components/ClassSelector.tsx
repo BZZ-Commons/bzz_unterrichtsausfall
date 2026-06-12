@@ -115,12 +115,14 @@ export default function ClassSelector({
         e.preventDefault();
         setActiveIndex((i) => Math.max(i - 1, 0));
         break;
-      case 'Enter':
+      case 'Enter': {
         e.preventDefault();
-        if (activeIndex >= 0 && filtered[activeIndex]) {
-          selectItem(filtered[activeIndex].id);
-        }
+        // Select the highlighted option, or — when nothing is highlighted —
+        // the top match for the typed query, so Enter picks the filtered class.
+        const pick = activeIndex >= 0 ? filtered[activeIndex] : filtered[0];
+        if (pick) selectItem(pick.id);
         break;
+      }
       case 'Escape':
         e.preventDefault();
         closeDropdown();
