@@ -9,7 +9,7 @@ export default function ImpressumPage() {
   return (
     <LegalPageShell title="Impressum">
       <p>
-        Die Webanwendung „Unterrichtsausfälle" ist ein Informationsangebot des Bildungszentrums
+        Die Webanwendung &bdquo;Unterrichtsausfälle&ldquo; ist ein Informationsangebot des Bildungszentrums
         Zürichsee BZZ.
       </p>
 

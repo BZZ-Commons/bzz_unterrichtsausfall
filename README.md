@@ -72,7 +72,8 @@ npm install
 npm run dev          # Dev server (http://localhost:3000)
 npm run build        # Production build
 npm run start        # Production server
-npm run lint         # TypeScript type-check
+npm run lint         # ESLint
+npm run typecheck    # TypeScript type-check
 npm run test         # Vitest run
 npm run test:watch   # Watch mode
 ```

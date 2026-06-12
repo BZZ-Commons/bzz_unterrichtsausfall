@@ -20,9 +20,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev          # Start dev server
 npm run build        # Production build
 npm run start        # Start production server
-npm run lint         # TypeScript type-check (tsc --noEmit)
+npm run lint         # ESLint (flat config, next/core-web-vitals + next/typescript)
+npm run typecheck    # TypeScript type-check (tsc --noEmit)
 npm run test         # Run all tests once
 npm run test:watch   # Watch mode
+npm run coverage     # Run tests with coverage report
 ```
 
 Run a single test file:

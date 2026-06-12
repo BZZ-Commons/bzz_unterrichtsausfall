@@ -24,7 +24,7 @@ export default function DatenschutzPage() {
       <section className="space-y-2">
         <h2 className="text-base font-semibold text-slate-900">Zweck der Anwendung</h2>
         <p>
-          Die Anwendung „Unterrichtsausfälle" zeigt einen Schuljahreskalender mit
+          Die Anwendung &bdquo;Unterrichtsausfälle&ldquo; zeigt einen Schuljahreskalender mit
           Unterrichtsausfällen, Ferien und Feiertagen pro Klasse. Die Daten werden bei jedem Aufruf
           aus dem Stundenplansystem WebUntis des BZZ bezogen und ausschliesslich zur Anzeige
           aufbereitet.
