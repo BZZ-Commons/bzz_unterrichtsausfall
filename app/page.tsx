@@ -403,36 +403,37 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="sm:ml-auto flex flex-col sm:flex-row sm:items-center gap-3">
-            {schoolYears.length >= 2 && (
+          {schoolYears.length >= 2 && (
+            <div className="sm:ml-auto">
               <SchoolYearSelector
                 schoolYears={schoolYears}
                 selectedId={selectedSchoolYearId}
                 onChange={handleSchoolYearChange}
               />
-            )}
-            {viewMode === 'single' && (
-              classesError ? (
-                <p className="text-sm text-red-600 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" />
-                  {classesError}
-                </p>
-              ) : (
-                <ClassSelector
-                  classes={classes}
-                  selectedId={selectedClassId}
-                  onChange={handleClassChange}
-                  loading={classesLoading}
-                />
-              )
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-6 flex justify-center sm:justify-start">
+        <div className="mb-6 flex flex-col sm:flex-row items-center gap-3">
           <ViewToggle value={viewMode} onChange={handleViewModeChange} />
+          {viewMode === 'single' && (
+            classesError ? (
+              <p className="sm:ml-auto text-sm text-red-600 flex items-center gap-1">
+                <AlertCircle className="w-4 h-4" />
+                {classesError}
+              </p>
+            ) : (
+              <ClassSelector
+                classes={classes}
+                selectedId={selectedClassId}
+                onChange={handleClassChange}
+                loading={classesLoading}
+                className="sm:ml-auto"
+              />
+            )
+          )}
         </div>
 
         {showDraftNotice && selectedSchoolYear && (
