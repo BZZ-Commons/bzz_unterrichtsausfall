@@ -13,13 +13,14 @@ export const PARTIAL_CANCEL_STYLE: DayStyle = {
 /**
  * Fill colors for one half of a split day cell. The hex values mirror the Tailwind
  * palette used elsewhere: emerald-100 (Unterricht), orange-200 (fällt aus),
- * slate-200 (kein Unterricht geplant). Used as inline backgrounds because the two
- * halves are independent, side-by-side elements (each its own link).
+ * slate-50 (kein Unterricht — identical to a non-school day, see DAY_STYLES['no-lessons']).
+ * Used as inline backgrounds because the two halves are independent, side-by-side
+ * elements (each its own link).
  */
 export const HALF_DAY_COLORS: Record<HalfStatus, string> = {
   lessons: '#d1fae5',   // emerald-100
   cancelled: '#fed7aa', // orange-200
-  none: '#e2e8f0',      // slate-200
+  none: '#f8fafc',      // slate-50 — same gray as a non-school day
 };
 
 /** CSS gradient for a split-day swatch (left | right halves) — used for the legend. */

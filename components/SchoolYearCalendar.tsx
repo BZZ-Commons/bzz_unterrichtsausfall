@@ -35,7 +35,9 @@ const DayCell = memo(function DayCell({ day, monday, fallbackClassId, classNames
   // Split day: two side-by-side links (Vormittag | Nachmittag), each to its own class.
   if (day.halfDay) {
     const { morning, afternoon } = day.halfDay;
-    const halfTip = (period: string, h: DayHalf) => {
+    // An empty half ('none') looks like a non-school day — no tooltip (kein "frei").
+    const halfTip = (period: string, h: DayHalf): string | undefined => {
+      if (h.status === 'none') return undefined;
       const cls = classNameOf(h.classId);
       const reason = h.reason ? ` (${h.reason})` : '';
       return `${cls ? `${cls} · ` : ''}${period}: ${halfStatusLabel(h.status)}${reason}`;
@@ -56,7 +58,7 @@ const DayCell = memo(function DayCell({ day, monday, fallbackClassId, classNames
           : (morning.reason ?? afternoon.reason))
       : undefined;
     // Both halves are identical links apart from their data — render via one helper.
-    const renderHalf = (h: DayHalf, id: number | undefined, tip: string) => (
+    const renderHalf = (h: DayHalf, id: number | undefined, tip: string | undefined) => (
       <a
         href={hrefFor(id)}
         target="_blank"
