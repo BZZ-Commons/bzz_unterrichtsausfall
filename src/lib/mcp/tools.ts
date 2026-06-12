@@ -26,8 +26,9 @@ const fail = (message: string) => ({
   isError: true,
 });
 
-const errorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
+/** Uniform tool-error result for failed WebUntis calls — single place for the error policy. */
+const untisError = (error: unknown) =>
+  fail(`WebUntis-Fehler: ${error instanceof Error ? error.message : String(error)}`);
 
 /** Date string in YYYY-MM-DD format. */
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -61,10 +62,16 @@ async function resolveRequestedClass(
     variant: query.variant,
   });
   if (resolution.kind !== 'resolved') {
-    return { resolved: false, response: ok({ ...resolution }) };
+    return { resolved: false, response: ok(resolution) };
   }
   return { resolved: true, cls: resolution.cls, fetchIds: resolution.fetchIds };
 }
+
+const schoolyearIdParam = z
+  .number()
+  .int()
+  .optional()
+  .describe('Schuljahr-ID aus listSchoolYears (Standard: aktuelles Schuljahr)');
 
 const classQueryShape = {
   className: z
@@ -72,11 +79,7 @@ const classQueryShape = {
     .optional()
     .describe('Klassenname, z. B. "IA24a" (Gross-/Kleinschreibung und Leerzeichen egal)'),
   classId: z.number().int().optional().describe('WebUntis-Klassen-ID (Alternative zu className)'),
-  schoolyearId: z
-    .number()
-    .int()
-    .optional()
-    .describe('Schuljahr-ID aus listSchoolYears (Standard: aktuelles Schuljahr)'),
+  schoolyearId: schoolyearIdParam,
   variant: z
     .enum(['bm', 'abu'])
     .optional()
@@ -93,13 +96,7 @@ export function registerTools(server: McpServer): void {
         'Companion-Klassen (Klassen mit gemeinsamem Stundenplan, z. B. zugehörige BM-Klasse). ' +
         'Optional für ein bestimmtes Schuljahr via schoolyearId (Standard: aktuelles Schuljahr). ' +
         'Liefert pro Klasse: id, name, longName, companionNames, fetchIds.',
-      inputSchema: {
-        schoolyearId: z
-          .number()
-          .int()
-          .optional()
-          .describe('Schuljahr-ID aus listSchoolYears (Standard: aktuelles Schuljahr)'),
-      },
+      inputSchema: { schoolyearId: schoolyearIdParam },
     },
     async ({ schoolyearId }) => {
       try {
@@ -114,7 +111,7 @@ export function registerTools(server: McpServer): void {
           })),
         );
       } catch (error: unknown) {
-        return fail(`WebUntis-Fehler: ${errorMessage(error)}`);
+        return untisError(error);
       }
     },
   );
@@ -132,7 +129,7 @@ export function registerTools(server: McpServer): void {
       try {
         return ok(await getSchoolYearsCached());
       } catch (error: unknown) {
-        return fail(`WebUntis-Fehler: ${errorMessage(error)}`);
+        return untisError(error);
       }
     },
   );
@@ -144,19 +141,13 @@ export function registerTools(server: McpServer): void {
       description:
         'Liefert die Quartals- (Q1–Q4) und Semestergrenzen eines Schuljahres als ' +
         'Datumsbereiche (YYYY-MM-DD). Optional via schoolyearId (Standard: aktuelles Schuljahr).',
-      inputSchema: {
-        schoolyearId: z
-          .number()
-          .int()
-          .optional()
-          .describe('Schuljahr-ID aus listSchoolYears (Standard: aktuelles Schuljahr)'),
-      },
+      inputSchema: { schoolyearId: schoolyearIdParam },
     },
     async ({ schoolyearId }) => {
       try {
         return ok(await getSchoolPeriodsCached(schoolyearId ?? null));
       } catch (error: unknown) {
-        return fail(`WebUntis-Fehler: ${errorMessage(error)}`);
+        return untisError(error);
       }
     },
   );
@@ -200,7 +191,7 @@ export function registerTools(server: McpServer): void {
           ...compactDays(data.days, { from, to }),
         });
       } catch (error: unknown) {
-        return fail(`WebUntis-Fehler: ${errorMessage(error)}`);
+        return untisError(error);
       }
     },
   );
@@ -219,7 +210,7 @@ export function registerTools(server: McpServer): void {
         'auch an Wochentagen ohne regulären Unterricht liegen). Jeder Tag enthält den ' +
         'korrekten Wochentag im Feld weekday — diesen verwenden, nicht selbst aus dem Datum ' +
         'berechnen.',
-      inputSchema: { ...classQueryShape },
+      inputSchema: classQueryShape,
     },
     async ({ className, classId, schoolyearId, variant }) => {
       try {
@@ -237,7 +228,7 @@ export function registerTools(server: McpServer): void {
           veranstaltungen,
         });
       } catch (error: unknown) {
-        return fail(`WebUntis-Fehler: ${errorMessage(error)}`);
+        return untisError(error);
       }
     },
   );

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { withUntisClient, resolveSchoolyear } from '@/src/lib/webuntis';
-import { fetchSchoolPeriods } from '@/src/lib/schoolPeriods';
-import type { UntisSchoolYear } from '@/src/types';
+import { withUntisClient } from '@/src/lib/webuntis';
+import { fetchSchoolPeriodsForYear } from '@/src/lib/calendar-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,17 +10,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   const yearId = yearIdParam ? parseInt(yearIdParam, 10) : null;
 
   try {
-    const periods = await withUntisClient(async (untis) => {
-      const raw = await resolveSchoolyear(untis, yearId);
-      const schoolYear: UntisSchoolYear = {
-        id: raw.id,
-        name: raw.name,
-        startDate: new Date(raw.startDate),
-        endDate: new Date(raw.endDate),
-      };
-      return fetchSchoolPeriods(untis, schoolYear);
-    });
-
+    const periods = await withUntisClient((untis) => fetchSchoolPeriodsForYear(untis, yearId));
     return NextResponse.json(periods);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to fetch school periods';

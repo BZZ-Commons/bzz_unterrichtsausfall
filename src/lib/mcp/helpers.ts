@@ -22,7 +22,6 @@ export interface CompactDay {
   weekday: string;
   type: DayType;
   holidayName?: string;
-  eventName?: string;
   lessonCount?: number;
   cancelledCount?: number;
   /** eventName, or the deduped halfDay morning/afternoon reasons joined with ' / '. */
@@ -140,7 +139,7 @@ export function resolveClass(
     return finalizeResolution(cls, classes, query.variant);
   }
 
-  if (typeof query.className === 'string' && query.className.trim() !== '') {
+  if (query.className?.trim()) {
     const cls = buildClassMap(classes).get(normalize(query.className));
     if (!cls) {
       return {
@@ -180,7 +179,6 @@ export function weekdayOf(date: string): string {
 function toCompactDay(day: CalendarDay): CompactDay {
   const compact: CompactDay = { date: day.date, weekday: weekdayOf(day.date), type: day.type };
   if (day.holidayName !== undefined) compact.holidayName = day.holidayName;
-  if (day.eventName !== undefined) compact.eventName = day.eventName;
   if (day.lessonCount !== undefined) compact.lessonCount = day.lessonCount;
   if (day.cancelledCount !== undefined) compact.cancelledCount = day.cancelledCount;
   const reason = buildReason(day);
@@ -261,20 +259,16 @@ export interface UpcomingDays {
  * Upcoming days (date >= todayIso), split by semantics: Unterrichtsausfall
  * (regular lessons cancelled — only ever affects school days) vs Veranstaltung
  * (school events such as a Sprachaufenthalt — may also be scheduled on weekdays
- * the class has no regular lessons). Cancellation days after a class's school
- * year end (`ended`) are included only with `includeEnded`.
+ * the class has no regular lessons). Days after a class's school year end
+ * (`ended`) are noise for "when is school cancelled next?" and are dropped.
  */
-export function filterUpcoming(
-  days: CalendarDay[],
-  todayIso: string,
-  opts?: { includeEnded?: boolean },
-): UpcomingDays {
+export function filterUpcoming(days: CalendarDay[], todayIso: string): UpcomingDays {
   const cancellations: CompactDay[] = [];
   const veranstaltungen: CompactDay[] = [];
   for (const day of days) {
     if (day.date < todayIso) continue;
     if (day.type === 'unterrichtsausfall') {
-      if (day.ended === true && opts?.includeEnded !== true) continue;
+      if (day.ended === true) continue;
       cancellations.push(toCompactDay(day));
     } else if (day.type === 'veranstaltung') {
       veranstaltungen.push(toCompactDay(day));
@@ -283,7 +277,9 @@ export function filterUpcoming(
   return { cancellations, veranstaltungen };
 }
 
+const ZURICH_DATE_FORMAT = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich' });
+
 /** Today's date as 'YYYY-MM-DD' in the Europe/Zurich timezone. */
 export function todayInZurich(now: Date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich' }).format(now);
+  return ZURICH_DATE_FORMAT.format(now);
 }

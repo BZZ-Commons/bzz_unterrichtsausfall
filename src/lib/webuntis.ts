@@ -1,5 +1,5 @@
 import { WebUntis, type SchoolYear } from 'webuntis';
-import type { UntisLesson } from '@/src/types';
+import type { UntisLesson, UntisSchoolYear } from '@/src/types';
 import { parseUntisLessons } from '@/src/lib/untisBoundary';
 
 /** WebUntis rate-limit recovery: one retry after a short backoff. */
@@ -42,6 +42,16 @@ export async function resolveSchoolyear(
     return found;
   }
   return untis.getCurrentSchoolyear(true);
+}
+
+/** Convert a raw WebUntis school year into the app's Date-based shape. */
+export function toUntisSchoolYear(raw: SchoolYear): UntisSchoolYear {
+  return {
+    id: raw.id,
+    name: raw.name,
+    startDate: new Date(raw.startDate),
+    endDate: new Date(raw.endDate),
+  };
 }
 
 /**

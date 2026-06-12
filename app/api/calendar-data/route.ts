@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { withUntisClient, resolveSchoolyear, fetchClassTimetable } from '@/src/lib/webuntis';
-import { parseUntisHolidays } from '@/src/lib/untisBoundary';
-import { classifyDays, deduplicateLessons } from '@/src/lib/calendar';
-import type { CalendarData, UntisSchoolYear } from '@/src/types';
+import { withUntisClient } from '@/src/lib/webuntis';
+import { buildClassCalendar } from '@/src/lib/calendar-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,41 +28,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   const yearId = yearIdParam ? parseInt(yearIdParam, 10) : null;
 
   try {
-    const result = await withUntisClient(async (untis) => {
-      const rawSchoolYear = await resolveSchoolyear(untis, yearId);
-      const schoolYear: UntisSchoolYear = {
-        id: rawSchoolYear.id,
-        name: rawSchoolYear.name,
-        startDate: new Date(rawSchoolYear.startDate),
-        endDate: new Date(rawSchoolYear.endDate),
-      };
-
-      // Companion sets are small, so fetch all timetables in parallel.
-      // fetchClassTimetable handles WebUntis rate-limit retries + boundary validation.
-      const [rawHolidays, ...lessonArrays] = await Promise.all([
-        untis.getHolidays(true),
-        ...allClassIds.map((id) => fetchClassTimetable(untis, schoolYear, id)),
-      ]);
-      const holidays = parseUntisHolidays(rawHolidays, 'holidays');
-
-      // Tag each lesson with the class it was fetched under so a merged day can link
-      // each half to the right class. Dedup keeps first-seen → primary class wins ties.
-      const taggedArrays = lessonArrays.map((arr, i) =>
-        arr.map((l) => ({ ...l, sourceClassId: allClassIds[i] })),
-      );
-      const lessons = deduplicateLessons(taggedArrays);
-      const days = classifyDays(schoolYear, holidays, lessons);
-
-      return {
-        schoolYear: {
-          id: schoolYear.id,
-          name: schoolYear.name,
-          startDate: schoolYear.startDate.toISOString(),
-          endDate: schoolYear.endDate.toISOString(),
-        },
-        days,
-      } satisfies CalendarData;
-    });
+    const result = await withUntisClient((untis) => buildClassCalendar(untis, yearId, allClassIds));
 
     // Single-class data is deliberately uncached at every layer (no server cache,
     // no client cache) — each request hits WebUntis live. Only the slow

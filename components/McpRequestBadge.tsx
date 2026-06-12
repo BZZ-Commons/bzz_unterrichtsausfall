@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { fetchJson } from '@/src/lib/fetchJson';
 
 /**
  * Unobtrusive footer badge: number of MCP requests in the last 15 minutes.
- * Renders nothing until the first successful fetch; refreshes every minute.
+ * Renders nothing until the first successful fetch; refreshes every minute,
+ * but only while the tab is visible (hidden tabs would otherwise poll forever).
  */
 export default function McpRequestBadge() {
   const [count, setCount] = useState<number | null>(null);
@@ -12,10 +14,9 @@ export default function McpRequestBadge() {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
+      if (document.visibilityState === 'hidden') return;
       try {
-        const res = await fetch('/api/mcp-stats');
-        if (!res.ok) return;
-        const data = (await res.json()) as { count: number };
+        const data = await fetchJson<{ count: number }>('/api/mcp-stats');
         if (!cancelled) setCount(data.count);
       } catch {
         // Keep the badge hidden (or stale) on fetch errors — purely informational.
@@ -23,9 +24,11 @@ export default function McpRequestBadge() {
     };
     load();
     const id = setInterval(load, 60_000);
+    document.addEventListener('visibilitychange', load);
     return () => {
       cancelled = true;
       clearInterval(id);
+      document.removeEventListener('visibilitychange', load);
     };
   }, []);
 

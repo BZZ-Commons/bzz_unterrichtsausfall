@@ -183,7 +183,9 @@ describe('compactDays', () => {
     ]);
 
     expect(result.days.map((d) => d.date)).toEqual(['2025-09-01', '2025-09-02', '2025-09-03']);
-    expect(result.days[1]).toMatchObject({ eventName: 'Sporttag', reason: 'Sporttag' });
+    // eventName is not emitted separately — it surfaces as `reason`.
+    expect(result.days[1]).toMatchObject({ reason: 'Sporttag' });
+    expect(result.days[1]).not.toHaveProperty('eventName');
   });
 
   it('omits undefined fields entirely (small JSON output)', () => {
@@ -285,16 +287,11 @@ describe('filterUpcoming', () => {
     day('2026-06-17', 'normal', { lessonCount: 8, cancelledCount: 1 }),
   ];
 
-  it('splits cancellations and veranstaltungen; excludes past and ended days by default', () => {
+  it('splits cancellations and veranstaltungen; excludes past and ended days', () => {
     const result = filterUpcoming(days, '2026-06-12');
     expect(result.cancellations.map((d) => d.date)).toEqual(['2026-06-12']);
     expect(result.veranstaltungen.map((d) => d.date)).toEqual(['2026-06-16']);
     expect(result.veranstaltungen[0].reason).toBe('Sporttag');
-  });
-
-  it('includes ended cancellation days with includeEnded', () => {
-    const result = filterUpcoming(days, '2026-06-12', { includeEnded: true });
-    expect(result.cancellations.map((d) => d.date)).toEqual(['2026-06-12', '2026-06-15']);
   });
 
   it('keeps veranstaltungen on weekdays without regular lessons (e.g. Sprachaufenthalt)', () => {

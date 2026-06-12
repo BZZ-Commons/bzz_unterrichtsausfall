@@ -22,7 +22,11 @@ interface CacheEntry<T> {
   inFlight?: Promise<T>;
 }
 
-const cache = new Map<string, CacheEntry<unknown>>();
+// The map lives on globalThis so all route bundles share ONE instance (Next.js
+// compiles each route separately; both /api/calendar-data-all and the MCP data
+// layer consume this cache) and it survives dev-mode HMR re-instantiation.
+const globalState = globalThis as unknown as { __serverCache?: Map<string, CacheEntry<unknown>> };
+const cache = (globalState.__serverCache ??= new Map<string, CacheEntry<unknown>>());
 
 /**
  * Return the cached value for `key` if it is still within `ttlMs`; otherwise run
