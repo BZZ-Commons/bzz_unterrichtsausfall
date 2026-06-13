@@ -832,6 +832,69 @@ describe('classifyDays — halfDay split (status + class per half)', () => {
     expect(mon.linkClassId).toBe(IA);
   });
 
+  // Symmetry with the green ≥6 full-day rule: a full teaching load (≥6) that is
+  // entirely cancelled reads as a full orange day, not a lone orange half.
+  it('collapses a ≥6 afternoon-only cancelled day into a full orange day (FBA26 f case)', () => {
+    // The same 6 afternoon lessons HELD would be a full green day, so cancelled they
+    // form a full orange day — no grey "free" morning beside a lone orange afternoon.
+    const mon = mondayOf([
+      at(1300, 'cancelled', IA),
+      at(1350, 'cancelled', IA),
+      at(1450, 'cancelled', IA),
+      at(1540, 'cancelled', IA),
+      at(1540, 'cancelled', IA),
+      at(1630, 'cancelled', IA),
+    ]);
+    expect(mon.type).toBe('unterrichtsausfall');
+    expect(mon.cancelledCount).toBe(6);
+    expect(mon.halfDay).toBeUndefined();
+    expect(mon.linkClassId).toBe(IA);
+  });
+
+  it('collapses a ≥6 morning-only cancelled day into a full orange day too', () => {
+    const mon = mondayOf([
+      at(745, 'cancelled', IA),
+      at(835, 'cancelled', IA),
+      at(925, 'cancelled', IA),
+      at(1015, 'cancelled', IA),
+      at(1105, 'cancelled', IA),
+      at(1150, 'cancelled', IA),
+    ]);
+    expect(mon.halfDay).toBeUndefined();
+    expect(mon.linkClassId).toBe(IA);
+  });
+
+  it('keeps a <6 afternoon-only cancelled day as a half (none | cancelled)', () => {
+    const mon = mondayOf([
+      at(1300, 'cancelled', IA),
+      at(1400, 'cancelled', IA),
+      at(1500, 'cancelled', IA),
+      at(1600, 'cancelled', IA),
+      at(1650, 'cancelled', IA),
+    ]); // 5 < 6 → unchanged
+    expect(mon.halfDay).toEqual({
+      morning: { status: 'none' },
+      afternoon: { status: 'cancelled', classId: IA },
+    });
+  });
+
+  it('still splits a ≥6 cancelled day spanning both halves across two classes (orange | orange)', () => {
+    // Both halves occupied → the empty-half collapse does not apply; the two-class
+    // boundary is preserved exactly as before.
+    const mon = mondayOf([
+      at(800, 'cancelled', IA),
+      at(900, 'cancelled', IA),
+      at(1000, 'cancelled', IA),
+      at(1300, 'cancelled', BM),
+      at(1400, 'cancelled', BM),
+      at(1500, 'cancelled', BM),
+    ]);
+    expect(mon.halfDay).toEqual({
+      morning: { status: 'cancelled', classId: IA },
+      afternoon: { status: 'cancelled', classId: BM },
+    });
+  });
+
   it('does NOT split when lessons carry no start time (cannot place them)', () => {
     const mon = mondayOf([makeLesson(20250818), makeLesson(20250818)]);
     expect(mon.type).toBe('normal');
@@ -846,6 +909,76 @@ describe('classifyDays — halfDay split (status + class per half)', () => {
     expect(mondayOf([at(1159, undefined, IA)]).halfDay).toEqual({
       morning: { status: 'lessons', classId: IA },
       afternoon: { status: 'none' },
+    });
+  });
+});
+
+describe('classifyDays — reason picks the event of the half’s own class (overlapping events)', () => {
+  // Real-world ABU case: viewing IA23 a (ABU) merges the IA class first — so its
+  // "QV der Abschlussklassen" event leads the array — alongside the AB class, which
+  // owns the actually-cancelled lessons and carries "QV Allgemeinbildender Unterricht".
+  // The reason on a cancelled half must come from the event of THAT half's class,
+  // not whichever event happens to be first in the merged array.
+  const IA = 4632,
+    AB = 4323;
+  const at = (startTime: number, code: string | undefined, cls: number): UntisLesson => ({
+    id: lessonIdCounter++,
+    date: 20250818, // Monday
+    startTime,
+    code,
+    sourceClassId: cls,
+  });
+  const allDayEvent = (lstext: string, cls: number): UntisLesson => ({
+    id: lessonIdCounter++,
+    date: 20250818,
+    startTime: 0, // all-day blanket Unterrichtsausfall event
+    code: 'irregular',
+    su: [],
+    lstext,
+    sourceClassId: cls,
+  });
+  const mondayOf = (lessons: UntisLesson[]): CalendarDay =>
+    classifyDays(SCHOOL_YEAR, [], lessons).find((d) => d.date === '2025-08-18')!;
+
+  it('uses the AB event for AB’s cancelled morning even when the IA event is merged first', () => {
+    const mon = mondayOf([
+      allDayEvent('Unterrichtsausfall: QV der Abschlussklassen', IA), // IA event first…
+      allDayEvent('Unterrichtsausfall: QV Allgemeinbildender Unterricht', AB),
+      at(745, 'cancelled', AB),
+      at(835, 'cancelled', AB),
+      at(1120, 'cancelled', AB), // …but the cancelled lessons are AB's
+    ]);
+    expect(mon.type).toBe('unterrichtsausfall');
+    expect(mon.halfDay).toEqual({
+      morning: { status: 'cancelled', classId: AB, reason: 'QV Allgemeinbildender Unterricht' },
+      afternoon: { status: 'none' },
+    });
+  });
+
+  it('gives each cancelled half the reason of its own class’s event', () => {
+    const mon = mondayOf([
+      allDayEvent('Unterrichtsausfall: QV der Abschlussklassen', IA),
+      allDayEvent('Unterrichtsausfall: QV Allgemeinbildender Unterricht', AB),
+      at(800, 'cancelled', IA), // morning belongs to IA
+      at(1300, 'cancelled', AB), // afternoon belongs to AB
+    ]);
+    expect(mon.halfDay).toEqual({
+      morning: { status: 'cancelled', classId: IA, reason: 'QV der Abschlussklassen' },
+      afternoon: { status: 'cancelled', classId: AB, reason: 'QV Allgemeinbildender Unterricht' },
+    });
+  });
+
+  it('falls back to any event reason when no event matches the cancelled half’s class', () => {
+    // Cancelled lessons are AB's, but the only event present is tagged to IA.
+    const mon = mondayOf([
+      allDayEvent('Unterrichtsausfall: QV der Abschlussklassen', IA),
+      at(800, 'cancelled', AB),
+      at(900, 'cancelled', AB),
+    ]);
+    expect(mon.halfDay?.morning).toEqual({
+      status: 'cancelled',
+      classId: AB,
+      reason: 'QV der Abschlussklassen',
     });
   });
 });

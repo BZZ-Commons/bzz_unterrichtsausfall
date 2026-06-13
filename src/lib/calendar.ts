@@ -244,6 +244,8 @@ function computeDaySplit(dayLessons: UntisLesson[]): {
 
   const heldAM = held.filter(isMorning);
   const heldPM = held.filter(isAfternoon);
+  const cancelledAM = cancelled.filter(isMorning);
+  const cancelledPM = cancelled.filter(isAfternoon);
 
   // ≥6 held lessons → full green day; only a class boundary between the held halves splits it.
   if (held.length >= FULL_DAY_MIN_LESSONS) {
@@ -260,12 +262,43 @@ function computeDaySplit(dayLessons: UntisLesson[]): {
     return { linkClassId: dominantClassId(held) };
   }
 
+  // Symmetric to the green full-day rule above: if the SAME full teaching load (≥6)
+  // is entirely cancelled, the whole day reads as one orange Unterrichtsausfall — not
+  // an afternoon-only half. Without this, an afternoon-heavy class (e.g. 6 cancelled
+  // afternoon lessons, no morning) would show a lone orange afternoon beside a grey
+  // "free" morning, even though those same 6 lessons HELD render as a full green day.
+  // Only collapse when the cancellations all sit in one half (the empty half has
+  // nothing of its own to show); genuine two-class days fall through to the per-half
+  // logic below and still split orange | orange.
+  if (
+    held.length === 0 &&
+    cancelled.length >= FULL_DAY_MIN_LESSONS &&
+    (cancelledAM.length === 0 || cancelledPM.length === 0)
+  ) {
+    return { linkClassId: dominantClassId(cancelled) };
+  }
+
   // A Schulausfall reason ("QV BM & KV", …) comes from an event period; attach it to
   // the cancelled half it falls in, so a split day still shows why lessons are out.
   const events = dayLessons.filter(isEventPeriod);
   const dayReason = events.map(eventReason).find(Boolean);
-  const reasonIn = (pred: (l: UntisLesson) => boolean): string | undefined =>
-    events.filter(pred).map(eventReason).find(Boolean) ?? dayReason;
+  // When several Unterrichtsausfall events from different class-groups overlap on one
+  // day (e.g. an IA "QV der Abschlussklassen" event merged alongside an AB "QV
+  // Allgemeinbildender Unterricht" event in the ABU view), pick the reason from the
+  // event that belongs to the class actually owning this half's cancelled lessons —
+  // matched via sourceClassId. Fall back to a time-half event, then any event.
+  const reasonFor = (
+    classId: number | undefined,
+    pred: (l: UntisLesson) => boolean,
+  ): string | undefined =>
+    (classId !== undefined
+      ? events
+          .filter((e) => e.sourceClassId === classId)
+          .map(eventReason)
+          .find(Boolean)
+      : undefined) ??
+    events.filter(pred).map(eventReason).find(Boolean) ??
+    dayReason;
 
   // <6 held → status per half, with the class owning that half's lessons.
   const halfOf = (
@@ -275,15 +308,16 @@ function computeDaySplit(dayLessons: UntisLesson[]): {
   ): DayHalf => {
     if (heldH.length > 0) return { status: 'lessons', classId: dominantClassId(heldH) };
     if (cancelledH.length > 0) {
-      const h: DayHalf = { status: 'cancelled', classId: dominantClassId(cancelledH) };
-      const reason = reasonIn(pred);
+      const classId = dominantClassId(cancelledH);
+      const h: DayHalf = { status: 'cancelled', classId };
+      const reason = reasonFor(classId, pred);
       if (reason) h.reason = reason;
       return h;
     }
     return { status: 'none' };
   };
-  const morning = halfOf(heldAM, cancelled.filter(isMorning), isMorning);
-  const afternoon = halfOf(heldPM, cancelled.filter(isAfternoon), isAfternoon);
+  const morning = halfOf(heldAM, cancelledAM, isMorning);
+  const afternoon = halfOf(heldPM, cancelledPM, isAfternoon);
 
   // Nothing could be placed (e.g. lessons without start times) → single cell.
   if (morning.status === 'none' && afternoon.status === 'none') {
