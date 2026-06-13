@@ -1,12 +1,19 @@
 import Link from 'next/link';
 import McpRequestBadge from '@/components/McpRequestBadge';
+import VersionBadge from '@/components/VersionBadge';
 
 export default function SiteFooter() {
   const year = new Date().getFullYear();
   return (
     <footer className="border-t border-slate-200 bg-white/80">
       <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center gap-2 text-xs text-slate-500">
-        <span>© {year} Bildungszentrum Zürichsee BZZ</span>
+        <span className="flex items-center gap-2">
+          © {year} Bildungszentrum Zürichsee BZZ
+          <span className="text-slate-300" aria-hidden="true">
+            ·
+          </span>
+          <VersionBadge />
+        </span>
         <nav className="sm:ml-auto flex items-center gap-4">
           <Link href="/impressum" className="hover:text-indigo-600 transition-colors">
             Impressum
