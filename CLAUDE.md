@@ -27,6 +27,7 @@ npm run test:watch   # Watch mode
 npm run coverage     # Run tests with coverage report
 npm run format       # Prettier — write
 npm run format:check # Prettier — check only (used in CI)
+npm run release      # Cut a release from changelog[0] (annotated tag + GitHub release)
 ```
 
 A husky pre-commit hook runs lint-staged (ESLint --fix + Prettier on staged files).
@@ -36,6 +37,20 @@ Run a single test file:
 ```bash
 npx vitest run tests/lib/calendar.test.ts
 ```
+
+### Releases / Versioning
+
+`src/lib/changelog.json` is the single source of truth for the version + changelog.
+`src/lib/version.ts` re-exports it as the typed `CHANGELOG` plus a derived
+`APP_VERSION`; the footer shows `v<APP_VERSION>` and opens `VersionDialog` with the
+history. To cut a release:
+
+1. Prepend a new entry (newest first) to `src/lib/changelog.json`.
+2. Bump `version` in `package.json` to match `changelog[0].version`.
+3. Commit + push `main`.
+4. `npm run release` — validates (clean tree, on main, pushed, versions match, tag
+   unused, `gh` authed), then creates the annotated tag and GitHub release from
+   `changelog[0]`. `npm run release -- --dry-run` previews without changing anything.
 
 ## Architecture
 

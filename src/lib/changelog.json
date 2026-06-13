@@ -1,0 +1,30 @@
+[
+  {
+    "version": "1.2.0",
+    "date": "2026-06-13",
+    "changes": [
+      "Klick auf einen Tag öffnet neu ein Detailfenster mit Status, Grund und WebUntis-Link — die Infos sind damit auch auf dem Handy erreichbar.",
+      "Die zuletzt gewählte Klasse wird gemerkt und beim nächsten Besuch automatisch angezeigt.",
+      "Fehler beim Laden lassen sich direkt erneut versuchen; ein fehlgeschlagener Excel-Export wird jetzt gemeldet.",
+      "Beim Klassenwechsel bleibt der bisherige Kalender sichtbar, statt kurz zu verschwinden.",
+      "Versionsnummer mit Verlauf im Footer."
+    ]
+  },
+  {
+    "version": "1.1.0",
+    "date": "2026-06-12",
+    "changes": [
+      "Gesamtübersicht „Alle Klassen“ mit Detailansicht pro Tag.",
+      "MCP-Server (/api/mcp) für den Zugriff auf die Ausfalldaten.",
+      "Auswahl von Schuljahr und Klasse bleibt über die URL teilbar."
+    ]
+  },
+  {
+    "version": "1.0.0",
+    "date": "2026-05-26",
+    "changes": [
+      "Erste Version: Schuljahreskalender mit Unterrichtsausfällen, Ferien und Veranstaltungen pro Klasse.",
+      "Excel-Export des Kalenders."
+    ]
+  }
+]
