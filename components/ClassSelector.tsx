@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { UntisClass } from '@/src/types';
+import { normalize } from '@/src/lib/classGroups';
 
 const LISTBOX_ID = 'class-selector-listbox';
 const LABEL_ID = 'class-selector-label';
@@ -46,8 +47,9 @@ export default function ClassSelector({
   const currentIndex = classes.findIndex((c) => c.id === selectedId);
   const selectedClass = currentIndex >= 0 ? classes[currentIndex] : null;
 
+  // Whitespace-insensitive match: typing "im24b" finds the class named "IM24 b".
   const filtered = query.trim()
-    ? classes.filter((c) => c.name.toLowerCase().includes(query.trim().toLowerCase()))
+    ? classes.filter((c) => normalize(c.name).includes(normalize(query)))
     : classes;
 
   const openDropdown = useCallback(() => {

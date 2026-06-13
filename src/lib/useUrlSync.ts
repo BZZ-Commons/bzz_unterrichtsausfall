@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import type { ViewMode } from '@/components/ViewToggle';
+import { normalize } from '@/src/lib/classGroups';
 
 interface UrlSyncArgs {
   selectedSchoolYearShort: string | null;
@@ -39,9 +40,11 @@ export function useUrlSync({
     if (viewMode === 'all') {
       params.set('view', 'all');
     } else if (selectedClassName) {
-      params.set('class', selectedClassName);
+      // Normalized (no spaces, lowercase) → "im24b" instead of "IM24+b". The
+      // deep-link resolver normalizes both sides, so this still round-trips.
+      params.set('class', normalize(selectedClassName));
       if (selectedCompanionName) {
-        params.set('companion', selectedCompanionName);
+        params.set('companion', normalize(selectedCompanionName));
       }
     }
     const next = `${window.location.pathname}?${params.toString()}`;
