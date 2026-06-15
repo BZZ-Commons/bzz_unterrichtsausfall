@@ -79,8 +79,11 @@ export function buildHolidayDateMap(holidays: UntisHoliday[]): Map<string, strin
  * A "Veranstaltung" / special-event period: irregular (deviates from the standard
  * timetable) and carrying no subject — i.e. not a real lesson. Regular lessons are
  * `code === undefined`; substitutions that still teach keep a subject.
+ *
+ * Accepts any lesson-shaped value with `code`/`su` so callers projecting onto a
+ * slimmer shape (e.g. the day-timetable preview) can reuse the same rule.
  */
-function isEventPeriod(lesson: UntisLesson): boolean {
+export function isEventPeriod(lesson: Pick<UntisLesson, 'code' | 'su'>): boolean {
   return lesson.code === 'irregular' && (lesson.su?.length ?? 0) === 0;
 }
 

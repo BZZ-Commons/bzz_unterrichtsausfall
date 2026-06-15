@@ -101,15 +101,52 @@ export interface UntisLesson {
   date: number; // YYYYMMDD
   /** Lesson start as an HHMM number (e.g. 800, 1150, 1335). Splits a day into Vormittag/Nachmittag. */
   startTime?: number;
+  /** Lesson end as an HHMM number (e.g. 845, 1205). Used by the day-timetable preview. */
+  endTime?: number;
   /** Class this lesson was fetched under — set server-side before dedup; identifies the owning class for links. */
   sourceClassId?: number;
   code?: 'cancelled' | 'irregular' | string;
   /** Subjects. Empty for special-event periods ("Veranstaltung"). */
   su?: { name: string }[];
+  /** Teachers (only `name` is consumed, by the day-timetable preview). */
+  te?: { name: string }[];
+  /** Rooms (only `name` is consumed, by the day-timetable preview). */
+  ro?: { name: string }[];
   /** Free-text lesson note — carries the event name on irregular event periods. */
   lstext?: string;
   /** Substitution text — weak signal; used only as an eventName fallback. */
   substText?: string;
+}
+
+// ─── Day timetable preview (single day, single/merged class) ─────────────────
+
+/**
+ * One block of a day's timetable preview — a single lesson or a run of merged
+ * contiguous lessons of the same subject (e.g. a double period shown as one row).
+ * A slimmed projection of the WebUntis lesson, carrying only what the inline
+ * preview renders.
+ */
+export interface DayLessonEntry {
+  startTime: number; // HHMM (e.g. 800, 1150)
+  endTime: number; // HHMM
+  /** Subject short name; empty for special-event ("Veranstaltung") periods. */
+  subject: string;
+  room?: string;
+  teacher?: string;
+  /** True when this period was cancelled (code === 'cancelled'). */
+  cancelled: boolean;
+  /** True for a special-event period (irregular + no subject) — show its text. */
+  isEvent: boolean;
+  /** Free text for an event period (lstext / substText). */
+  text?: string;
+  /** Class this block was fetched under (for merged single-day views). */
+  sourceClassId?: number;
+}
+
+/** A single day's lessons, ready for the inline timetable preview. */
+export interface DayTimetable {
+  date: string; // 'YYYY-MM-DD'
+  lessons: DayLessonEntry[];
 }
 
 /** Serializable school year shape used over the JSON API. */

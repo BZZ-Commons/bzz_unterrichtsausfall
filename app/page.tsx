@@ -15,7 +15,12 @@ import ErrorNotice from '@/components/ErrorNotice';
 import ExportButton from '@/components/ExportButton';
 import DraftNotice from '@/components/DraftNotice';
 import { isIAClass, isMEClass, isIMClass, getIAVariants } from '@/src/lib/classGroups';
-import { schoolYearShort, isDraftSchoolYear, findDefaultSchoolYear } from '@/src/lib/schoolYear';
+import {
+  schoolYearShort,
+  isDraftSchoolYear,
+  findDefaultSchoolYear,
+  isPreviewGateOpen,
+} from '@/src/lib/schoolYear';
 import { writeLastSelection } from '@/src/lib/lastSelection';
 import { useMeasuredHeight } from '@/src/lib/useMeasuredHeight';
 import { useYearData } from '@/src/lib/useYearData';
@@ -186,6 +191,11 @@ export default function HomePage() {
   // shown cancellations may still change (until the end of the current year).
   // Computed inline rather than memoized so it reflects the current date.
   const showDraftNotice = isDraftSchoolYear(selectedSchoolYear, schoolYears, Date.now());
+
+  // The day-timetable preview is gated until the selected school year has actually
+  // begun (next year's plan is only a draft) — except on the dev server. Shared
+  // with the API route's server-side gate via isPreviewGateOpen.
+  const previewAllowed = isPreviewGateOpen(selectedSchoolYear, Date.now());
 
   // Only surface a companion in the header for single-companion merges (length 2).
   // Multi-companion classes (e.g. AB c → IA a+b) fall back to longName.
@@ -453,6 +463,8 @@ export default function HomePage() {
           day={selectedSingleDay.day}
           monday={selectedSingleDay.monday}
           fallbackClassId={selectedClassId}
+          classIds={selectedFetchIds ?? [selectedClassId]}
+          previewAllowed={previewAllowed}
           classNamesById={classNamesById}
           onClose={() => setSelectedSingleDay(null)}
         />

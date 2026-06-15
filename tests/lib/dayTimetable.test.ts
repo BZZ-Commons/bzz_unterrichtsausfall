@@ -1,0 +1,95 @@
+import { describe, it, expect } from 'vitest';
+import {
+  buildDayTimetable,
+  formatUntisTime,
+  type DayTimetableLesson,
+} from '@/src/lib/dayTimetable';
+
+describe('formatUntisTime', () => {
+  it('zero-pads hours and minutes', () => {
+    expect(formatUntisTime(800)).toBe('08:00');
+    expect(formatUntisTime(1150)).toBe('11:50');
+    expect(formatUntisTime(1335)).toBe('13:35');
+  });
+});
+
+describe('buildDayTimetable', () => {
+  it('sorts lessons chronologically', () => {
+    const lessons: DayTimetableLesson[] = [
+      { startTime: 1335, endTime: 1420, su: [{ name: 'E' }] },
+      { startTime: 800, endTime: 845, su: [{ name: 'M' }] },
+    ];
+    expect(buildDayTimetable(lessons).map((l) => l.subject)).toEqual(['M', 'E']);
+  });
+
+  it('merges contiguous same-subject periods into one block', () => {
+    const lessons: DayTimetableLesson[] = [
+      { startTime: 800, endTime: 845, su: [{ name: 'M' }], ro: [{ name: '204' }] },
+      { startTime: 850, endTime: 935, su: [{ name: 'M' }], ro: [{ name: '204' }] },
+    ];
+    const result = buildDayTimetable(lessons);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ subject: 'M', startTime: 800, endTime: 935 });
+  });
+
+  it('keeps a different subject in an adjacent slot separate', () => {
+    const lessons: DayTimetableLesson[] = [
+      { startTime: 800, endTime: 845, su: [{ name: 'M' }] },
+      { startTime: 850, endTime: 935, su: [{ name: 'E' }] },
+    ];
+    expect(buildDayTimetable(lessons)).toHaveLength(2);
+  });
+
+  it('does not merge across a cancelled boundary', () => {
+    const lessons: DayTimetableLesson[] = [
+      { startTime: 800, endTime: 845, su: [{ name: 'M' }] },
+      { startTime: 850, endTime: 935, su: [{ name: 'M' }], code: 'cancelled' },
+    ];
+    const result = buildDayTimetable(lessons);
+    expect(result).toHaveLength(2);
+    expect(result[1].cancelled).toBe(true);
+  });
+
+  it('flags cancelled periods and reads subject/room/teacher', () => {
+    const lessons: DayTimetableLesson[] = [
+      {
+        startTime: 800,
+        endTime: 845,
+        su: [{ name: 'M' }],
+        ro: [{ name: '204' }],
+        te: [{ name: 'MÜL' }],
+        code: 'cancelled',
+      },
+    ];
+    expect(buildDayTimetable(lessons)[0]).toMatchObject({
+      subject: 'M',
+      room: '204',
+      teacher: 'MÜL',
+      cancelled: true,
+    });
+  });
+
+  it('treats an irregular subject-less period as an event with its text', () => {
+    const lessons: DayTimetableLesson[] = [
+      {
+        startTime: 800,
+        endTime: 1200,
+        code: 'irregular',
+        su: [],
+        lstext: 'Lehrpersonenweiterbildung',
+      },
+    ];
+    const [event] = buildDayTimetable(lessons);
+    expect(event).toMatchObject({ isEvent: true, text: 'Lehrpersonenweiterbildung', subject: '' });
+  });
+
+  it('drops lessons without a start time', () => {
+    const lessons: DayTimetableLesson[] = [
+      { su: [{ name: 'M' }] },
+      { startTime: 800, su: [{ name: 'E' }] },
+    ];
+    const result = buildDayTimetable(lessons);
+    expect(result).toHaveLength(1);
+    expect(result[0].subject).toBe('E');
+  });
+});

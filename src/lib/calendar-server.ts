@@ -10,7 +10,31 @@ import { resolveSchoolyear, toUntisSchoolYear, fetchClassTimetable } from '@/src
 import { fetchSchoolPeriods } from '@/src/lib/schoolPeriods';
 import { parseUntisHolidays } from '@/src/lib/untisBoundary';
 import { classifyDays, deduplicateLessons } from '@/src/lib/calendar';
-import type { CalendarData, SchoolPeriod, SchoolYearSummary } from '@/src/types';
+import type { CalendarData, SchoolPeriod, SchoolYearSummary, UntisLesson } from '@/src/types';
+
+/**
+ * Fetch the merged, de-duplicated lessons for a set of classes over a date range.
+ * Each lesson is tagged with the class it was fetched under (`sourceClassId`) so a
+ * merged day can attribute it to the right class; duplicates shared across
+ * companion classes are removed by id. Shared by the year calendar
+ * ({@link buildClassCalendar}) and the single-day timetable preview route.
+ */
+export async function fetchMergedClassLessons(
+  untis: WebUntis,
+  range: { startDate: Date; endDate: Date },
+  classIds: number[],
+): Promise<UntisLesson[]> {
+  // Companion sets are small, so fetch all timetables in parallel.
+  // fetchClassTimetable handles WebUntis rate-limit retries + boundary validation.
+  const lessonArrays = await Promise.all(
+    classIds.map((id) => fetchClassTimetable(untis, range, id)),
+  );
+  // Dedup keeps first-seen → primary class wins ties.
+  const tagged = lessonArrays.map((arr, i) =>
+    arr.map((l) => ({ ...l, sourceClassId: classIds[i] })),
+  );
+  return deduplicateLessons(tagged);
+}
 
 /** All school years, newest first. */
 export async function fetchSchoolYearSummaries(untis: WebUntis): Promise<SchoolYearSummary[]> {
@@ -48,20 +72,12 @@ export async function buildClassCalendar(
 ): Promise<CalendarData> {
   const schoolYear = toUntisSchoolYear(await resolveSchoolyear(untis, yearId));
 
-  // Companion sets are small, so fetch all timetables in parallel.
-  // fetchClassTimetable handles WebUntis rate-limit retries + boundary validation.
-  const [rawHolidays, ...lessonArrays] = await Promise.all([
+  // Holidays fetch runs in parallel with the (already-parallel) class timetables.
+  const [rawHolidays, lessons] = await Promise.all([
     untis.getHolidays(true),
-    ...classIds.map((id) => fetchClassTimetable(untis, schoolYear, id)),
+    fetchMergedClassLessons(untis, schoolYear, classIds),
   ]);
   const holidays = parseUntisHolidays(rawHolidays, 'holidays');
-
-  // Tag each lesson with the class it was fetched under so a merged day can link
-  // each half to the right class. Dedup keeps first-seen → primary class wins ties.
-  const taggedArrays = lessonArrays.map((arr, i) =>
-    arr.map((l) => ({ ...l, sourceClassId: classIds[i] })),
-  );
-  const lessons = deduplicateLessons(taggedArrays);
   const days = classifyDays(schoolYear, holidays, lessons);
 
   return {

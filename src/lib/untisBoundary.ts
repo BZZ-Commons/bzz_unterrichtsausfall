@@ -92,6 +92,26 @@ function optionalString(
   if (v != null && typeof v !== 'string') onFail(key);
 }
 
+/** Optional ShortData array field (su/te/ro): each present entry must have a string `name`. */
+function optionalShortDataArray(
+  rec: Record<string, unknown>,
+  key: string,
+  onFail: (field: string) => never,
+): void {
+  const v = rec[key];
+  if (v == null) return;
+  if (!Array.isArray(v)) onFail(key);
+  for (const entry of v as unknown[]) {
+    if (
+      typeof entry !== 'object' ||
+      entry === null ||
+      typeof (entry as Record<string, unknown>)['name'] !== 'string'
+    ) {
+      onFail(key);
+    }
+  }
+}
+
 function asRecord(element: unknown, context: string, index: number): Record<string, unknown> {
   if (typeof element !== 'object' || element === null || Array.isArray(element)) {
     fail(context, index, '<element>', element);
@@ -104,7 +124,8 @@ function asRecord(element: unknown, context: string, index: number): Record<stri
 /**
  * Validate a raw WebUntis timetable response into `UntisLesson[]`.
  * Required: id (number), date (number).
- * Optional (type-checked if present): startTime, code, lstext, substText, su.
+ * Optional (type-checked if present): startTime, endTime, code, lstext,
+ * substText, and the ShortData arrays su / te / ro (each `{ name: string }[]`).
  * Returns the same array reference, typed.
  */
 export function parseUntisLessons(raw: unknown, context: string): UntisLesson[] {
@@ -116,24 +137,15 @@ export function parseUntisLessons(raw: unknown, context: string): UntisLesson[] 
     expectNumber(rec, 'id', onFail);
     expectNumber(rec, 'date', onFail);
     optionalNumber(rec, 'startTime', onFail);
+    optionalNumber(rec, 'endTime', onFail);
     optionalString(rec, 'code', onFail);
     optionalString(rec, 'lstext', onFail);
     optionalString(rec, 'substText', onFail);
 
-    // `su` is an array of { name: string }; only su[0].name and su.length are read.
-    const su = rec['su'];
-    if (su != null) {
-      if (!Array.isArray(su)) onFail('su');
-      for (const entry of su as unknown[]) {
-        if (
-          typeof entry !== 'object' ||
-          entry === null ||
-          typeof (entry as Record<string, unknown>)['name'] !== 'string'
-        ) {
-          onFail('su');
-        }
-      }
-    }
+    // su / te / ro are ShortData arrays; only each entry's `name` is consumed.
+    optionalShortDataArray(rec, 'su', onFail);
+    optionalShortDataArray(rec, 'te', onFail);
+    optionalShortDataArray(rec, 'ro', onFail);
   });
   return raw as UntisLesson[];
 }

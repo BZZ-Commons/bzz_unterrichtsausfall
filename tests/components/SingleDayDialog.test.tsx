@@ -13,12 +13,22 @@ const classNamesById = new Map<number, string>([
   [CLASS_B_ID, 'BM25a'],
 ]);
 
-const renderDialog = (day: CalendarDay, onClose = vi.fn()) => {
+// Default to an empty classIds so the inline timetable preview (which fetches on
+// mount) stays off for the link/half-day assertions; the preview has its own
+// test below.
+const renderDialog = (
+  day: CalendarDay,
+  onClose = vi.fn(),
+  classIds: number[] = [],
+  previewAllowed = true,
+) => {
   render(
     <SingleDayDialog
       day={day}
       monday={MONDAY}
       fallbackClassId={FALLBACK_ID}
+      classIds={classIds}
+      previewAllowed={previewAllowed}
       classNamesById={classNamesById}
       onClose={onClose}
     />,
@@ -113,6 +123,49 @@ describe('SingleDayDialog — split day', () => {
     const links = screen.getAllByRole('link');
     expect(links).toHaveLength(1);
     expect(links[0]).toHaveAttribute('href', expect.stringContaining(String(CLASS_A_ID)));
+  });
+});
+
+describe('SingleDayDialog — timetable preview', () => {
+  const normalDay: CalendarDay = {
+    date: '2025-09-08',
+    type: 'normal',
+    lessonCount: 5,
+    linkClassId: CLASS_A_ID,
+  };
+
+  it('shows the preview on a school day when classIds are given', async () => {
+    // Keep the preview in its loading state — no network resolution needed.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {})),
+    );
+    renderDialog(normalDay, vi.fn(), [CLASS_A_ID, CLASS_B_ID]);
+    expect(await screen.findByText('Tagesstundenplan')).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it('omits the preview on a ferien day', () => {
+    const fetchSpy = vi.fn(() => new Promise(() => {}));
+    vi.stubGlobal('fetch', fetchSpy);
+    renderDialog(
+      { date: '2025-09-08', type: 'ferien', holidayName: 'Herbstferien', linkClassId: CLASS_A_ID },
+      vi.fn(),
+      [CLASS_A_ID],
+    );
+    expect(screen.queryByText('Tagesstundenplan')).not.toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('omits the preview (and skips fetching) before the school year starts', () => {
+    const fetchSpy = vi.fn(() => new Promise(() => {}));
+    vi.stubGlobal('fetch', fetchSpy);
+    // previewAllowed = false → gated even on a school day with classIds.
+    renderDialog(normalDay, vi.fn(), [CLASS_A_ID, CLASS_B_ID], false);
+    expect(screen.queryByText('Tagesstundenplan')).not.toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 });
 

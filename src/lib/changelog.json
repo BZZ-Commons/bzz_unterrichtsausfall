@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.3.0",
+    "date": "2026-06-15",
+    "changes": [
+      "Das Tagesdetail-Fenster zeigt neu eine Vorschau des Tagesstundenplans — Lektionen mit Zeit, Fach, Raum und Lehrperson, abgesagte Lektionen sind markiert — bevor man zu WebUntis wechselt. Auch auf dem Handy.",
+      "Die Stundenplan-Vorschau erscheint erst ab Schuljahresbeginn; ein noch nicht gestartetes Schuljahr bleibt vorerst ohne Stundenplan-Details."
+    ]
+  },
+  {
     "version": "1.2.0",
     "date": "2026-06-13",
     "changes": [

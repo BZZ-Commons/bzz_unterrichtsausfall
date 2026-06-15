@@ -1,5 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import { schoolYearShort, findSchoolYearByShort, isDraftSchoolYear } from '@/src/lib/schoolYear';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import {
+  schoolYearShort,
+  findSchoolYearByShort,
+  isDraftSchoolYear,
+  hasSchoolYearStarted,
+  findSchoolYearForDate,
+  isPreviewGateOpen,
+} from '@/src/lib/schoolYear';
 import type { SchoolYearSummary } from '@/src/types';
 
 const YEAR_2526: SchoolYearSummary = {
@@ -59,5 +66,56 @@ describe('isDraftSchoolYear', () => {
 
   it('returns false for an undefined year', () => {
     expect(isDraftSchoolYear(undefined, YEARS, at('2026-06-11T00:00:00.000Z'))).toBe(false);
+  });
+});
+
+describe('hasSchoolYearStarted', () => {
+  it('is false before the start date (draft year still in the future)', () => {
+    expect(hasSchoolYearStarted(YEAR_2627, at('2026-06-11T00:00:00.000Z'))).toBe(false);
+  });
+
+  it('is true on or after the start date', () => {
+    expect(hasSchoolYearStarted(YEAR_2627, at('2026-08-16T22:00:00.000Z'))).toBe(true);
+    expect(hasSchoolYearStarted(YEAR_2627, at('2026-09-01T00:00:00.000Z'))).toBe(true);
+  });
+
+  it('is true for the current, already-started year', () => {
+    expect(hasSchoolYearStarted(YEAR_2526, at('2026-06-11T00:00:00.000Z'))).toBe(true);
+  });
+
+  it('returns false for an undefined year', () => {
+    expect(hasSchoolYearStarted(undefined, at('2026-06-11T00:00:00.000Z'))).toBe(false);
+  });
+});
+
+describe('findSchoolYearForDate', () => {
+  it('returns the year whose range contains the date', () => {
+    expect(findSchoolYearForDate(YEARS, at('2025-12-01T00:00:00.000Z'))).toBe(YEAR_2526);
+    expect(findSchoolYearForDate(YEARS, at('2026-10-01T00:00:00.000Z'))).toBe(YEAR_2627);
+  });
+
+  it('returns undefined for a date outside every year (e.g. summer break)', () => {
+    // Between YEAR_2526 end (2026-07-15) and YEAR_2627 start (2026-08-16).
+    expect(findSchoolYearForDate(YEARS, at('2026-08-01T00:00:00.000Z'))).toBeUndefined();
+  });
+});
+
+describe('isPreviewGateOpen', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('is always open on the dev server, even for a not-yet-started year', () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    expect(isPreviewGateOpen(YEAR_2627, at('2026-06-11T00:00:00.000Z'))).toBe(true);
+  });
+
+  it('in production, gates a not-yet-started year but allows a started one', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    expect(isPreviewGateOpen(YEAR_2627, at('2026-06-11T00:00:00.000Z'))).toBe(false);
+    expect(isPreviewGateOpen(YEAR_2526, at('2026-06-11T00:00:00.000Z'))).toBe(true);
+  });
+
+  it('in production, gates an undefined year (date in no known year)', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    expect(isPreviewGateOpen(undefined, at('2026-06-11T00:00:00.000Z'))).toBe(false);
   });
 });

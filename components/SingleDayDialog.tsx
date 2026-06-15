@@ -7,7 +7,11 @@ import { de } from 'date-fns/locale';
 import { buildDayTooltip, halfStatusLabel } from '@/src/lib/calendar';
 import { untisWeekHref } from '@/src/lib/untisLinks';
 import { HALF_DAY_COLORS } from '@/src/lib/calendar-styles';
+import DayTimetablePreview from '@/components/DayTimetablePreview';
 import type { CalendarDay, DayHalf, DayType } from '@/src/types';
+
+/** Day types that can carry lessons → worth an inline timetable preview. */
+const PREVIEW_DAY_TYPES = new Set<DayType>(['normal', 'unterrichtsausfall', 'veranstaltung']);
 
 const DAY_TYPE_LABELS: Record<DayType, string> = {
   normal: 'Normaler Schultag',
@@ -25,6 +29,10 @@ interface SingleDayDialogProps {
   monday: string;
   /** Selected class — link target for days/halves without a class of their own. */
   fallbackClassId: number;
+  /** Merged class IDs (self + companions) — source for the day-timetable preview. */
+  classIds: number[];
+  /** Gate for the preview: hidden until the school year has started (dev: always on). */
+  previewAllowed: boolean;
   classNamesById?: Map<number, string>;
   onClose: () => void;
 }
@@ -47,6 +55,8 @@ export default function SingleDayDialog({
   day,
   monday,
   fallbackClassId,
+  classIds,
+  previewAllowed,
   classNamesById,
   onClose,
 }: SingleDayDialogProps) {
@@ -82,6 +92,7 @@ export default function SingleDayDialog({
     ? 'Geteilter Tag (Vormittag / Nachmittag)'
     : DAY_TYPE_LABELS[day.type];
   const detail = buildDayTooltip(day);
+  const showPreview = previewAllowed && PREVIEW_DAY_TYPES.has(day.type) && classIds.length > 0;
 
   const halfRow = (period: string, h: DayHalf) => (
     <li className="flex items-baseline gap-2.5 text-sm">
@@ -110,10 +121,10 @@ export default function SingleDayDialog({
       aria-labelledby="single-day-title"
     >
       <div
-        className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-6"
+        className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between p-6 pb-4 shrink-0">
           <div className="min-w-0">
             <h2 id="single-day-title" className="text-lg font-semibold text-slate-900 capitalize">
               {formatDateLong(day.date)}
@@ -134,41 +145,45 @@ export default function SingleDayDialog({
           </button>
         </div>
 
-        {day.halfDay && (
-          <ul className="space-y-2 mb-4">
-            {halfRow('Vormittag', day.halfDay.morning)}
-            {halfRow('Nachmittag', day.halfDay.afternoon)}
-          </ul>
-        )}
+        <div className="overflow-y-auto px-6 pb-6 space-y-4">
+          {day.halfDay && (
+            <ul className="space-y-2">
+              {halfRow('Vormittag', day.halfDay.morning)}
+              {halfRow('Nachmittag', day.halfDay.afternoon)}
+            </ul>
+          )}
 
-        <ul className="space-y-1.5">
-          {linkIds.map((id) => {
-            const name = classNameOf(id);
-            return (
-              <li key={id}>
-                <a
-                  href={untisWeekHref(monday, id)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors group"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-900">
-                      {name ? `Stundenplan ${name}` : 'Stundenplan'} in WebUntis öffnen
-                    </p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Woche vom {formatWeekStart(monday)}
-                    </p>
-                  </div>
-                  <ExternalLink
-                    className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 shrink-0"
-                    aria-hidden="true"
-                  />
-                </a>
-              </li>
-            );
-          })}
-        </ul>
+          {showPreview && <DayTimetablePreview classIds={classIds} date={day.date} />}
+
+          <ul className="space-y-1.5">
+            {linkIds.map((id) => {
+              const name = classNameOf(id);
+              return (
+                <li key={id}>
+                  <a
+                    href={untisWeekHref(monday, id)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-900">
+                        {name ? `Stundenplan ${name}` : 'Stundenplan'} in WebUntis öffnen
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Woche vom {formatWeekStart(monday)}
+                      </p>
+                    </div>
+                    <ExternalLink
+                      className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 shrink-0"
+                      aria-hidden="true"
+                    />
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
     </div>
   );

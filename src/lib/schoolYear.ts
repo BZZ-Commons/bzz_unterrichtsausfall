@@ -33,6 +33,37 @@ export function isDraftSchoolYear(
 }
 
 /**
+ * Whether a school year has actually begun (its start date is on or before `now`).
+ * Next year's plan is published early as a draft (see {@link isDraftSchoolYear});
+ * gated UI such as the day-timetable preview waits for the year to truly start.
+ */
+export function hasSchoolYearStarted(year: SchoolYearSummary | undefined, now: number): boolean {
+  if (!year) return false;
+  return new Date(year.startDate).getTime() <= now;
+}
+
+/**
+ * Whether the day-timetable preview may be shown for `year`. The dev server
+ * always allows it (for local testing); production gates it until the year has
+ * begun — a not-yet-started year's plan is only a draft. Shared by the UI gate
+ * (app/page.tsx) and the API route so the two layers can't drift.
+ */
+export function isPreviewGateOpen(year: SchoolYearSummary | undefined, now: number): boolean {
+  if (process.env.NODE_ENV !== 'production') return true;
+  return hasSchoolYearStarted(year, now);
+}
+
+/** The school year whose date range contains `date` (epoch ms), or undefined if none. */
+export function findSchoolYearForDate(
+  years: ReadonlyArray<SchoolYearSummary>,
+  date: number,
+): SchoolYearSummary | undefined {
+  return years.find(
+    (y) => new Date(y.startDate).getTime() <= date && date <= new Date(y.endDate).getTime(),
+  );
+}
+
+/**
  * The app's default/current school year: the one whose date range contains `now`,
  * falling back to the most recent year in the list. `null` only when the list is
  * empty. This is what the page preselects and what the logo "home" link targets.
@@ -41,10 +72,7 @@ export function findDefaultSchoolYear(
   years: ReadonlyArray<SchoolYearSummary>,
   now: number,
 ): SchoolYearSummary | null {
-  const current = years.find(
-    (y) => new Date(y.startDate).getTime() <= now && now <= new Date(y.endDate).getTime(),
-  );
-  return current ?? years[0] ?? null;
+  return findSchoolYearForDate(years, now) ?? years[0] ?? null;
 }
 
 /**
