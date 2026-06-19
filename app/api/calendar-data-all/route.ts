@@ -11,6 +11,8 @@ import { classifyDays, deduplicateLessons, buildHolidayDateMap } from '@/src/lib
 import { aggregateClassDays, type PerClassClassification } from '@/src/lib/aggregate';
 import { listActiveClassesEnriched } from '@/src/lib/classes-server';
 import { groupClassesByPlan } from '@/src/lib/planGroups';
+import { withRateLimit } from '@/src/lib/apiRateLimit';
+import { errorResponse } from '@/src/lib/apiError';
 import type { AggregatedCalendarData, UntisLesson, UntisSchoolYear } from '@/src/types';
 
 export const dynamic = 'force-dynamic';
@@ -23,7 +25,7 @@ export const maxDuration = 120; // seconds — allow up to 2 min for full-school
  */
 const AGGREGATE_CACHE_TTL_MS = 15 * 60 * 1000;
 
-export async function GET(request: Request): Promise<NextResponse> {
+export const GET = withRateLimit(async (request: Request): Promise<NextResponse> => {
   const { searchParams } = new URL(request.url);
   const yearIdParam = searchParams.get('schoolyearId');
   const yearId = yearIdParam ? parseInt(yearIdParam, 10) : null;
@@ -110,8 +112,6 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(result);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch aggregated calendar';
-    console.error('Error fetching aggregated calendar:', error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return errorResponse('Fehler beim Laden des Kalenders.', error);
   }
-}
+});

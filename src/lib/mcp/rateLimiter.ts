@@ -68,6 +68,17 @@ export function createRateLimiter(opts: { limit: number; windowMs: number }): Ra
 /** Shared limiter for the MCP endpoint: 20 requests per client per minute. */
 export const mcpRateLimiter: RateLimiter = createRateLimiter({ limit: 20, windowMs: 60_000 });
 
+/** Standard 429 response for a rate-limited caller (shared by MCP + REST routes). */
+export function rateLimitResponse(retryAfterSec: number): Response {
+  return new Response(
+    JSON.stringify({ error: 'Zu viele Anfragen. Bitte warte eine Minute und versuche es erneut.' }),
+    {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfterSec) },
+    },
+  );
+}
+
 /**
  * Client IP from the `x-forwarded-for` header (first comma-separated entry).
  * Falls back to 'unknown' when missing/empty — local dev then shares a single

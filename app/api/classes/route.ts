@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { withUntisClient, resolveSchoolyearId } from '@/src/lib/webuntis';
 import { listActiveClassesEnriched } from '@/src/lib/classes-server';
+import { withRateLimit } from '@/src/lib/apiRateLimit';
+import { errorResponse } from '@/src/lib/apiError';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request): Promise<NextResponse> {
+export const GET = withRateLimit(async (request: Request): Promise<NextResponse> => {
   const { searchParams } = new URL(request.url);
   const yearIdParam = searchParams.get('schoolyearId');
   const yearId = yearIdParam ? parseInt(yearIdParam, 10) : null;
@@ -17,7 +19,6 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(classes);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch classes';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return errorResponse('Fehler beim Laden der Klassen.', error);
   }
-}
+});

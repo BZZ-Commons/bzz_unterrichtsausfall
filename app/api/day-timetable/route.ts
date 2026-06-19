@@ -3,6 +3,8 @@ import { withUntisClient } from '@/src/lib/webuntis';
 import { buildDayTimetable } from '@/src/lib/dayTimetable';
 import { fetchMergedClassLessons, fetchSchoolYearSummaries } from '@/src/lib/calendar-server';
 import { findSchoolYearForDate, isPreviewGateOpen } from '@/src/lib/schoolYear';
+import { withRateLimit } from '@/src/lib/apiRateLimit';
+import { errorResponse } from '@/src/lib/apiError';
 import type { DayTimetable } from '@/src/types';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +22,7 @@ export const dynamic = 'force-dynamic';
  *
  * Query: ?classIds=123,456&date=YYYY-MM-DD
  */
-export async function GET(request: Request): Promise<NextResponse> {
+export const GET = withRateLimit(async (request: Request): Promise<NextResponse> => {
   const { searchParams } = new URL(request.url);
   const classIdsParam = searchParams.get('classIds');
   const dateParam = searchParams.get('date');
@@ -80,8 +82,6 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch day timetable';
-    console.error('Error fetching day timetable:', error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return errorResponse('Fehler beim Laden des Tagesplans.', error);
   }
-}
+});

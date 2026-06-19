@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { withUntisClient } from '@/src/lib/webuntis';
 import { buildClassCalendar } from '@/src/lib/calendar-server';
+import { withRateLimit } from '@/src/lib/apiRateLimit';
+import { errorResponse } from '@/src/lib/apiError';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request): Promise<NextResponse> {
+export const GET = withRateLimit(async (request: Request): Promise<NextResponse> => {
   const { searchParams } = new URL(request.url);
   const classIdsParam = searchParams.get('classIds');
   const yearIdParam = searchParams.get('schoolyearId');
@@ -36,8 +38,6 @@ export async function GET(request: Request): Promise<NextResponse> {
     // that guarantee explicit to browsers/proxies too.
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch calendar data';
-    console.error('Error fetching calendar data:', error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return errorResponse('Fehler beim Laden der Kalenderdaten.', error);
   }
-}
+});
