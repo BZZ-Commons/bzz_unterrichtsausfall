@@ -1,7 +1,7 @@
 import { format, addDays, getISODay, getISOWeek, getISOWeekYear } from 'date-fns';
 
 /** Unique numeric key for an ISO week: YYYY * 100 + WW */
-function getWeekKey(date: Date): number {
+export function getWeekKey(date: Date): number {
   return getISOWeekYear(date) * 100 + getISOWeek(date);
 }
 import type {
@@ -195,6 +195,56 @@ function schoolDaysFromRealLessons(realLessons: UntisLesson[]): Set<number> {
   }
 
   return schoolDays;
+}
+
+/**
+ * WebUntis bookings ("Zusätzlicher Unterricht") created in the web UI carry a
+ * lesson number far above the range of Untis-scheduled lessons (observed
+ * ~144k–466k for regular BZZ lessons vs ≥ 3e6 for bookings). A lesson at or above
+ * this threshold is *suspected* to be a booking; it is never treated as one on
+ * this signal alone — the suspicion only triggers an authoritative `lessonCode`
+ * check against the weekly REST API (see `stripWebUntisBookings`).
+ */
+export const SUSPICIOUS_LSNUMBER_THRESHOLD = 1_000_000;
+
+/**
+ * Lessons whose `lsnumber` marks them as a possible WebUntis booking. This is the
+ * cheap gate that decides which lessons are worth verifying via the (more
+ * expensive) weekly REST API. Deliberately permissive: a false positive only
+ * costs one extra week fetch, while the authoritative `lessonCode` check makes the
+ * final decision; a false negative would let a booking slip through.
+ */
+export function findSuspiciousLessons(lessons: UntisLesson[]): UntisLesson[] {
+  return lessons.filter(
+    (l) => typeof l.lsnumber === 'number' && l.lsnumber >= SUSPICIOUS_LSNUMBER_THRESHOLD,
+  );
+}
+
+/**
+ * Remove confirmed WebUntis bookings that fall on a weekday the class never has
+ * school — those are the ones that would otherwise paint phantom lessons onto a
+ * free day. Bookings on an actual school day are kept (they stay visible).
+ *
+ * `bookingIds` are period ids confirmed as `WEBUNTIS_ACTIVITY` via the weekly API.
+ * School days are derived from the lessons WITHOUT those bookings, so a booking can
+ * never establish a school day of its own — honouring "only official Untis dates
+ * define school days". The downstream {@link classifyDays} recomputes the same set
+ * from the returned lessons (kept bookings sit only on weekdays already taught by
+ * regular lessons), so no school-day set needs to be threaded through.
+ */
+export function removeNonSchoolDayBookings(
+  lessons: UntisLesson[],
+  bookingIds: ReadonlySet<number>,
+): UntisLesson[] {
+  if (bookingIds.size === 0) return lessons;
+  // bookingIds may carry confirmed-booking ids from other classes' week timetables;
+  // skip the school-day recompute when none of them actually appear here.
+  if (!lessons.some((l) => bookingIds.has(l.id))) return lessons;
+  const schoolDays = determineSchoolDays(lessons.filter((l) => !bookingIds.has(l.id)));
+  return lessons.filter((l) => {
+    if (!bookingIds.has(l.id)) return true;
+    return schoolDays.has(getISODay(parseUntisDate(l.date)));
+  });
 }
 
 /**

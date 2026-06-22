@@ -6,6 +6,9 @@ import {
   deduplicateLessons,
   buildDayTooltip,
   halfStatusLabel,
+  findSuspiciousLessons,
+  removeNonSchoolDayBookings,
+  SUSPICIOUS_LSNUMBER_THRESHOLD,
 } from '@/src/lib/calendar';
 import type { CalendarDay, UntisHoliday, UntisLesson, UntisSchoolYear } from '@/src/types';
 
@@ -1051,5 +1054,68 @@ describe('buildDayTooltip', () => {
 
   it('returns undefined for a bare weekend/no-lessons day with no counts', () => {
     expect(buildDayTooltip({ date: '2025-08-23', type: 'weekend' })).toBeUndefined();
+  });
+});
+
+describe('findSuspiciousLessons', () => {
+  const withLs = (lsnumber: number | undefined): UntisLesson => ({
+    id: lessonIdCounter++,
+    date: 20250818,
+    lsnumber,
+  });
+
+  it('flags lessons with an outlier lsnumber (>= threshold)', () => {
+    const booking = withLs(3039194);
+    const result = findSuspiciousLessons([withLs(385300), booking, withLs(144600)]);
+    expect(result).toEqual([booking]);
+  });
+
+  it('treats the threshold as inclusive', () => {
+    expect(findSuspiciousLessons([withLs(SUSPICIOUS_LSNUMBER_THRESHOLD)])).toHaveLength(1);
+    expect(findSuspiciousLessons([withLs(SUSPICIOUS_LSNUMBER_THRESHOLD - 1)])).toHaveLength(0);
+  });
+
+  it('ignores lessons without an lsnumber', () => {
+    expect(findSuspiciousLessons([withLs(undefined)])).toHaveLength(0);
+  });
+});
+
+describe('removeNonSchoolDayBookings', () => {
+  // Regular lessons only on Mondays across 4 weeks → school day = {Mon}.
+  const mondays = [20250818, 20250825, 20250901, 20250908].map((d) => makeLesson(d));
+  const bookingOnMonday = makeLesson(20250818); // 2025-08-18 is a Monday → school day
+  const bookingOnWednesday = makeLesson(20250820); // 2025-08-20 is a Wednesday → no school
+
+  it('drops a confirmed booking on a non-school weekday', () => {
+    const lessons = [...mondays, bookingOnWednesday];
+    const result = removeNonSchoolDayBookings(lessons, new Set([bookingOnWednesday.id]));
+    expect(result).not.toContain(bookingOnWednesday);
+    expect(result).toHaveLength(mondays.length);
+  });
+
+  it('keeps a confirmed booking that falls on an actual school weekday', () => {
+    const lessons = [...mondays, bookingOnMonday];
+    const result = removeNonSchoolDayBookings(lessons, new Set([bookingOnMonday.id]));
+    expect(result).toContain(bookingOnMonday);
+  });
+
+  it('excludes bookings from the school-day calculation itself', () => {
+    // The ONLY Wednesday "lesson" is a booking → Wednesday must not become a school
+    // day, so the booking is dropped rather than legitimising its own weekday.
+    const lessons = [...mondays, bookingOnWednesday];
+    const result = removeNonSchoolDayBookings(lessons, new Set([bookingOnWednesday.id]));
+    expect(result).not.toContain(bookingOnWednesday);
+  });
+
+  it('returns the input untouched when there are no bookings', () => {
+    const lessons = [...mondays];
+    expect(removeNonSchoolDayBookings(lessons, new Set())).toBe(lessons);
+  });
+
+  it('leaves non-booking lessons alone even on non-school weekdays', () => {
+    const wednesdayLesson = makeLesson(20250820);
+    const lessons = [...mondays, wednesdayLesson];
+    const result = removeNonSchoolDayBookings(lessons, new Set([bookingOnWednesday.id]));
+    expect(result).toContain(wednesdayLesson);
   });
 });

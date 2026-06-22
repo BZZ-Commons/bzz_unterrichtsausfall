@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { parseUntisLessons, parseUntisClasses, parseUntisHolidays } from '@/src/lib/untisBoundary';
+import {
+  parseUntisLessons,
+  parseUntisClasses,
+  parseUntisHolidays,
+  parseUntisWeekLessons,
+} from '@/src/lib/untisBoundary';
 
 // ─── parseUntisLessons ───────────────────────────────────────────────────────
 
@@ -131,6 +136,51 @@ describe('parseUntisClasses', () => {
 
   it('throws when raw is not an array', () => {
     expect(() => parseUntisClasses('nope', 'ctx')).toThrow(/expected an array/);
+  });
+});
+
+// ─── parseUntisLessons — lsnumber ────────────────────────────────────────────
+
+describe('parseUntisLessons — lsnumber', () => {
+  it('accepts a numeric lsnumber', () => {
+    const raw = [{ id: 1, date: 20250818, lsnumber: 3039194 }];
+    expect(parseUntisLessons(raw, 'ctx')).toBe(raw);
+  });
+
+  it('rejects a non-numeric lsnumber', () => {
+    const raw = [{ id: 1, date: 20250818, lsnumber: 'x' }];
+    expect(() => parseUntisLessons(raw, 'ctx')).toThrow(/lsnumber/);
+  });
+});
+
+// ─── parseUntisWeekLessons ───────────────────────────────────────────────────
+
+describe('parseUntisWeekLessons', () => {
+  it('projects id + lessonCode, ignoring all other fields', () => {
+    const raw = [
+      { id: 2518299, lessonCode: 'WEBUNTIS_ACTIVITY', cellState: 'CONFIRMED', extra: 1 },
+      { id: 2455005, lessonCode: 'LESSON' },
+    ];
+    expect(parseUntisWeekLessons(raw, 'ctx')).toEqual([
+      { id: 2518299, lessonCode: 'WEBUNTIS_ACTIVITY' },
+      { id: 2455005, lessonCode: 'LESSON' },
+    ]);
+  });
+
+  it('accepts an empty array', () => {
+    expect(parseUntisWeekLessons([], 'ctx')).toEqual([]);
+  });
+
+  it('throws with context on a missing/invalid id', () => {
+    expect(() => parseUntisWeekLessons([{ lessonCode: 'LESSON' }], 'ctx')).toThrow(/ctx.*id/s);
+  });
+
+  it('throws on a missing lessonCode', () => {
+    expect(() => parseUntisWeekLessons([{ id: 1 }], 'ctx')).toThrow(/lessonCode/);
+  });
+
+  it('throws when given a non-array', () => {
+    expect(() => parseUntisWeekLessons(null, 'ctx')).toThrow(/ctx/);
   });
 });
 

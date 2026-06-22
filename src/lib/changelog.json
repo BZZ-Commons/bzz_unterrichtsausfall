@@ -1,10 +1,12 @@
 [
   {
-    "version": "1.3.0",
-    "date": "2026-06-15",
+    "version": "1.2.1",
+    "date": "2026-06-22",
     "changes": [
+      "Manuell in WebUntis erfasste Zusatztermine („Zusätzlicher Unterricht“) an unterrichtsfreien Tagen werden nicht mehr als Schultag oder Unterricht angezeigt — der Kalender bildet nur noch den offiziellen Untis-Stundenplan ab.",
       "Das Tagesdetail-Fenster zeigt neu eine Vorschau des Tagesstundenplans — Lektionen mit Zeit, Fach, Raum und Lehrperson, abgesagte Lektionen sind markiert — bevor man zu WebUntis wechselt. Auch auf dem Handy.",
-      "Die Stundenplan-Vorschau erscheint erst ab Schuljahresbeginn; ein noch nicht gestartetes Schuljahr bleibt vorerst ohne Stundenplan-Details."
+      "Die Stundenplan-Vorschau erscheint erst ab Schuljahresbeginn; ein noch nicht gestartetes Schuljahr bleibt vorerst ohne Stundenplan-Details.",
+      "Robusteres Verhalten der Schnittstellen unter Last (Rate-Limiting); interne Fehlerdetails erscheinen nicht mehr in den API-Antworten."
     ]
   },
   {

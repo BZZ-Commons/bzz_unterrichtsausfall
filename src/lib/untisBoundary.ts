@@ -1,4 +1,4 @@
-import type { UntisClass, UntisHoliday, UntisLesson } from '@/src/types';
+import type { UntisClass, UntisHoliday, UntisLesson, UntisWeekLesson } from '@/src/types';
 
 /**
  * Runtime validation at the WebUntis boundary.
@@ -141,6 +141,7 @@ export function parseUntisLessons(raw: unknown, context: string): UntisLesson[] 
     optionalString(rec, 'code', onFail);
     optionalString(rec, 'lstext', onFail);
     optionalString(rec, 'substText', onFail);
+    optionalNumber(rec, 'lsnumber', onFail);
 
     // su / te / ro are ShortData arrays; only each entry's `name` is consumed.
     optionalShortDataArray(rec, 'su', onFail);
@@ -148,6 +149,23 @@ export function parseUntisLessons(raw: unknown, context: string): UntisLesson[] 
     optionalShortDataArray(rec, 'ro', onFail);
   });
   return raw as UntisLesson[];
+}
+
+/**
+ * Validate a raw WebUntis week-timetable response (`getTimetableForWeek` /
+ * `WebAPITimetable[]`) into `UntisWeekLesson[]`.
+ * Required: id (number), lessonCode (string). All other fields are ignored.
+ */
+export function parseUntisWeekLessons(raw: unknown, context: string): UntisWeekLesson[] {
+  const arr = expectArray(raw, context);
+  return arr.map((element, index): UntisWeekLesson => {
+    const rec = asRecord(element, context, index);
+    const onFail = (field: string): never => fail(context, index, field, element);
+    return {
+      id: expectNumber(rec, 'id', onFail),
+      lessonCode: expectString(rec, 'lessonCode', onFail),
+    };
+  });
 }
 
 /**

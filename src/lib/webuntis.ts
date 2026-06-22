@@ -1,6 +1,6 @@
 import { WebUntis, type SchoolYear } from 'webuntis';
-import type { UntisLesson, UntisSchoolYear } from '@/src/types';
-import { parseUntisLessons } from '@/src/lib/untisBoundary';
+import type { UntisLesson, UntisSchoolYear, UntisWeekLesson } from '@/src/types';
+import { parseUntisLessons, parseUntisWeekLessons } from '@/src/lib/untisBoundary';
 
 /** WebUntis rate-limit recovery: one retry after a short backoff. */
 const RATE_LIMIT_RETRY_BACKOFF_MS = 1500;
@@ -89,11 +89,23 @@ export async function mapWithConcurrency<TIn, TOut>(
 }
 
 /**
+ * Run a WebUntis fetch with a single retry on rate-limit errors (429 /
+ * ECONNRESET) after a short backoff — empirically enough to clear the limit.
+ */
+async function withRateLimitRetry<T>(fetchRaw: () => Promise<T>): Promise<T> {
+  try {
+    return await fetchRaw();
+  } catch (err) {
+    if (!isRateLimitError(err)) throw err;
+    await sleep(RATE_LIMIT_RETRY_BACKOFF_MS);
+    return fetchRaw();
+  }
+}
+
+/**
  * Fetch one class's timetable for a school-year range, with a single retry on
- * rate-limit errors (429 / ECONNRESET) after a short backoff — empirically
- * enough to clear WebUntis's limit. The result is validated at the boundary
- * (`parseUntisLessons`) so upstream shape drift fails loudly instead of
- * silently misclassifying days.
+ * rate-limit errors. The result is validated at the boundary (`parseUntisLessons`)
+ * so upstream shape drift fails loudly instead of silently misclassifying days.
  *
  * This is the ONLY way routes should fetch timetables — it unifies retry +
  * validation at a single chokepoint.
@@ -103,24 +115,35 @@ export async function fetchClassTimetable(
   schoolYear: { startDate: Date; endDate: Date },
   classId: number,
 ): Promise<UntisLesson[]> {
-  const fetchRaw = () =>
+  const raw = await withRateLimitRetry(() =>
     untis.getTimetableForRange(
       schoolYear.startDate,
       schoolYear.endDate,
       classId,
       1, // WebUntis.TYPES.CLASS
-    );
-
-  let raw: unknown;
-  try {
-    raw = await fetchRaw();
-  } catch (err) {
-    if (!isRateLimitError(err)) throw err;
-    await sleep(RATE_LIMIT_RETRY_BACKOFF_MS);
-    raw = await fetchRaw();
-  }
-
+    ),
+  );
   return parseUntisLessons(raw, `timetable for class ${classId}`);
+}
+
+/**
+ * Fetch one class's week timetable via the newer REST endpoint
+ * (`getTimetableForWeek`), validated into `UntisWeekLesson[]`. Unlike the classic
+ * range API, this exposes `lessonCode`, the only authoritative way to tell an
+ * official Untis lesson (`"LESSON"`) from a manually created WebUntis booking
+ * (`"WEBUNTIS_ACTIVITY"`). Used by the booking strip-out — see
+ * `stripWebUntisBookings` in calendar-server.ts. `weekDate` may be any date
+ * within the desired week.
+ */
+export async function fetchClassTimetableWeek(
+  untis: WebUntis,
+  weekDate: Date,
+  classId: number,
+): Promise<UntisWeekLesson[]> {
+  const raw = await withRateLimitRetry(() =>
+    untis.getTimetableForWeek(weekDate, classId, 1 /* WebUntis.TYPES.CLASS */),
+  );
+  return parseUntisWeekLessons(raw, `week timetable for class ${classId}`);
 }
 
 /**

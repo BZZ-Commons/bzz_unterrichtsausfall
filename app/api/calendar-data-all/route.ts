@@ -9,6 +9,7 @@ import { parseUntisHolidays } from '@/src/lib/untisBoundary';
 import { getCached } from '@/src/lib/serverCache';
 import { classifyDays, deduplicateLessons, buildHolidayDateMap } from '@/src/lib/calendar';
 import { aggregateClassDays, type PerClassClassification } from '@/src/lib/aggregate';
+import { stripWebUntisBookings } from '@/src/lib/calendar-server';
 import { listActiveClassesEnriched } from '@/src/lib/classes-server';
 import { groupClassesByPlan } from '@/src/lib/planGroups';
 import { withRateLimit } from '@/src/lib/apiRateLimit';
@@ -84,17 +85,29 @@ export const GET = withRateLimit(async (request: Request): Promise<NextResponse>
         // (often electives or placeholder classes) and would otherwise pollute the
         // aggregate, since `determineSchoolDays` falls back to "all weekdays" when
         // no lessons exist, turning every weekday into `schulausfall`.
-        const perClass: PerClassClassification[] = groups
-          .map((g) => {
-            const merged = deduplicateLessons(g.memberIds.map((id) => lessonsById.get(id) ?? []));
-            return { group: g, merged };
-          })
-          .filter(({ merged }) => merged.length > 0)
-          .map(({ group: g, merged }) => ({
+        const groupsWithLessons = groups
+          .map((g) => ({
+            group: g,
+            merged: deduplicateLessons(g.memberIds.map((id) => lessonsById.get(id) ?? [])),
+          }))
+          .filter(({ merged }) => merged.length > 0);
+
+        // Strip non-school-day WebUntis bookings per group before classifying. Bounded
+        // concurrency mirrors the timetable fetch; groups without a suspect booking
+        // early-return inside stripWebUntisBookings (no extra WebUntis call).
+        const perClass: PerClassClassification[] = await mapWithConcurrency(
+          groupsWithLessons,
+          4,
+          async ({ group: g, merged }): Promise<PerClassClassification> => ({
             className: g.representative.name,
             classId: g.representative.id,
-            days: classifyDays(schoolYear, holidays, merged),
-          }));
+            days: classifyDays(
+              schoolYear,
+              holidays,
+              await stripWebUntisBookings(untis, g.memberIds, merged),
+            ),
+          }),
+        );
 
         const days = aggregateClassDays(perClass, buildHolidayDateMap(holidays));
 

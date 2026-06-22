@@ -116,6 +116,27 @@ export interface UntisLesson {
   lstext?: string;
   /** Substitution text — weak signal; used only as an eventName fallback. */
   substText?: string;
+  /**
+   * WebUntis lesson number ("Unterrichtsnummer"). Regular Untis-scheduled lessons
+   * cluster in a stable range (observed ~144k–466k for BZZ); WebUntis bookings
+   * ("Zusätzlicher Unterricht") get a much larger number (≥ 1e6). Used only as the
+   * cheap suspicion gate in {@link findSuspiciousLessons} — never as a hard signal;
+   * confirmation always goes through the weekly REST API's `lessonCode`.
+   */
+  lsnumber?: number;
+}
+
+/**
+ * Slim projection of a WebUntis week-timetable entry (`getTimetableForWeek` /
+ * `WebAPITimetable`). The week API is the ONLY one exposing `lessonCode`, which
+ * authoritatively distinguishes official Untis lessons (`"LESSON"`) from manually
+ * created WebUntis bookings (`"WEBUNTIS_ACTIVITY"`, shown as "Zusätzlicher
+ * Unterricht"). `id` matches the period id from the classic timetable API, so the
+ * two can be joined. Only these two fields are consumed.
+ */
+export interface UntisWeekLesson {
+  id: number;
+  lessonCode: string;
 }
 
 // ─── Day timetable preview (single day, single/merged class) ─────────────────
