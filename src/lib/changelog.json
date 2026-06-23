@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.2.2",
+    "date": "2026-06-23",
+    "changes": [
+      "Veranstaltungen (z. B. Sprachaufenthalte oder Sporttage) werden im Kalender neu himmelblau dargestellt — vorher grün und dadurch kaum von normalen Unterrichtstagen zu unterscheiden.",
+      "Wird eine IA-Klasse zusammen mit ihrer BM-Partnerklasse angezeigt, hat ein Sprachaufenthalt der BM-Klasse neu Vorrang vor den Unterrichtsausfällen der IA-Klasse — die betroffene Woche erscheint durchgehend als Veranstaltung."
+    ]
+  },
+  {
     "version": "1.2.1",
     "date": "2026-06-22",
     "changes": [

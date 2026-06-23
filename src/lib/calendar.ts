@@ -91,6 +91,18 @@ function getEventText(event: UntisLesson): string | undefined {
   return event.lstext || event.substText;
 }
 
+/**
+ * Whether an event period is an "Unterrichtsausfall" blanket cancellation (lessons
+ * cancelled), as opposed to a real Veranstaltung (e.g. a "Sprachaufenthalt"). Checked
+ * against both text fields, mirroring {@link getEventText}.
+ */
+function isUnterrichtsausfallEvent(event: Pick<UntisLesson, 'lstext' | 'substText'>): boolean {
+  return (
+    (event.lstext ?? '').startsWith('Unterrichtsausfall') ||
+    (event.substText ?? '').startsWith('Unterrichtsausfall')
+  );
+}
+
 /** Schulausfall reason from an event period, with any "Unterrichtsausfall:" prefix stripped. */
 function eventReason(event: UntisLesson): string | undefined {
   return (
@@ -470,11 +482,15 @@ export function classifyDays(
           // Only cancelled lessons and/or special events remain.
           // If the only event is an "Unterrichtsausfall" Veranstaltung on a day the
           // class doesn't normally have school, don't color it — there's nothing to cancel.
-          const event = dayLessons.find(isEventPeriod);
-          const isUnterrichtsausfall =
-            event != null &&
-            ((event.lstext ?? '').startsWith('Unterrichtsausfall') ||
-              (event.substText ?? '').startsWith('Unterrichtsausfall'));
+          const events = dayLessons.filter(isEventPeriod);
+          // A real Veranstaltung (e.g. a BM "Sprachaufenthalt") takes priority over an
+          // overlapping "Unterrichtsausfall" blanket event — regardless of merge order. When
+          // an IA class is viewed with its BM companion, the companion's Sprachaufenthalt
+          // should win over the IA's QV cancellation; viewed with an AB companion (no
+          // Sprachaufenthalt in the set) the IA Unterrichtsausfall still shows. Class-agnostic:
+          // the Veranstaltung event only exists here when its class is actually loaded.
+          const event = events.find((e) => !isUnterrichtsausfallEvent(e)) ?? events[0];
+          const isUnterrichtsausfall = event != null && isUnterrichtsausfallEvent(event);
 
           if (isUnterrichtsausfall && !schoolDays.has(isoDay)) {
             type = 'no-lessons';

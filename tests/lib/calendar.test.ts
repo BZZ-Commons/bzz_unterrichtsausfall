@@ -986,6 +986,72 @@ describe('classifyDays — reason picks the event of the half’s own class (ove
   });
 });
 
+describe('classifyDays — Veranstaltung beats overlapping Unterrichtsausfall event', () => {
+  // Real-world IA+BM case: an IA class merged with its BM companion. During the BM
+  // "Sprachaufenthalt" week the IA class has a "QV"-style "Unterrichtsausfall" blanket
+  // event. The companion's Sprachaufenthalt (a real Veranstaltung) must win over the IA
+  // cancellation, regardless of which class is the primary (merge order). Viewed with an
+  // AB companion instead — no Sprachaufenthalt in the set — the IA Unterrichtsausfall stays.
+  const IA = 4632,
+    BM = 3855,
+    AB = 4323;
+  const event = (lstext: string, cls: number): UntisLesson => ({
+    id: lessonIdCounter++,
+    date: 20250818, // Monday
+    startTime: 0, // all-day blanket event
+    code: 'irregular',
+    su: [],
+    lstext,
+    sourceClassId: cls,
+  });
+  const cancelled = (cls: number): UntisLesson => ({
+    id: lessonIdCounter++,
+    date: 20250818,
+    startTime: 800,
+    code: 'cancelled',
+    sourceClassId: cls,
+  });
+  const ausfall = (cls: number) => event('Unterrichtsausfall: QV der Abschlussklassen', cls);
+  const sprachaufenthalt = (cls: number) => event('Sprachaufenthalt', cls);
+  const mondayOf = (lessons: UntisLesson[]): CalendarDay =>
+    classifyDays(SCHOOL_YEAR, [], lessons).find((d) => d.date === '2025-08-18')!;
+
+  it('renders veranstaltung when an IA Unterrichtsausfall event is merged BEFORE the BM Sprachaufenthalt', () => {
+    const mon = mondayOf([ausfall(IA), sprachaufenthalt(BM), cancelled(IA)]);
+    expect(mon.type).toBe('veranstaltung');
+    expect(mon.eventName).toBe('Sprachaufenthalt');
+  });
+
+  it('renders veranstaltung regardless of merge order (BM Sprachaufenthalt first)', () => {
+    const mon = mondayOf([sprachaufenthalt(BM), ausfall(IA), cancelled(IA)]);
+    expect(mon.type).toBe('veranstaltung');
+    expect(mon.eventName).toBe('Sprachaufenthalt');
+  });
+
+  it('keeps unterrichtsausfall when only an Unterrichtsausfall event is present (AB companion, no Sprachaufenthalt)', () => {
+    const mon = mondayOf([ausfall(IA), cancelled(IA), cancelled(AB)]);
+    expect(mon.type).toBe('unterrichtsausfall');
+  });
+
+  it('shows the Sprachaufenthalt even on a non-school day, where the IA Unterrichtsausfall alone would be grey', () => {
+    // Tuesday is not a school day (the only real lesson — a Monday cancellation — makes
+    // Monday the sole school day). A lone "Unterrichtsausfall" event there → no-lessons;
+    // the overlapping Sprachaufenthalt promotes it to a visible veranstaltung instead.
+    const days = classifyDays(
+      SCHOOL_YEAR,
+      [],
+      [
+        cancelled(IA), // Monday → establishes Monday as the only school day
+        { ...ausfall(IA), date: 20250819 }, // Tuesday: IA blanket Unterrichtsausfall
+        { ...sprachaufenthalt(BM), date: 20250819 }, // Tuesday: BM Sprachaufenthalt
+      ],
+    );
+    const tue = days.find((d) => d.date === '2025-08-19');
+    expect(tue?.type).toBe('veranstaltung');
+    expect(tue?.eventName).toBe('Sprachaufenthalt');
+  });
+});
+
 describe('halfStatusLabel', () => {
   it('maps each half status to its German label', () => {
     expect(halfStatusLabel('lessons')).toBe('Unterricht');

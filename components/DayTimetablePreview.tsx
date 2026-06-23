@@ -21,14 +21,13 @@ type LoadState =
 /** Accent bar colour per lesson state — mirrors the calendar's palette. */
 function accentColor(l: DayLessonEntry): string {
   if (l.cancelled) return '#fb923c'; // orange-400 — fällt aus
-  if (l.isEvent) return '#a78bfa'; // violet-400 — Veranstaltung
+  if (l.isEvent) return '#38bdf8'; // sky-400 — Veranstaltung
   return '#34d399'; // emerald-400 — Unterricht
 }
 
 /** Small status pill (e.g. "fällt aus" / "Veranstaltung") shown next to a lesson. */
-function StatusBadge({ label, tone }: { label: string; tone: 'orange' | 'violet' }) {
-  const toneClass =
-    tone === 'orange' ? 'bg-orange-100 text-orange-700' : 'bg-violet-100 text-violet-700';
+function StatusBadge({ label, tone }: { label: string; tone: 'orange' | 'sky' }) {
+  const toneClass = tone === 'orange' ? 'bg-orange-100 text-orange-700' : 'bg-sky-100 text-sky-700';
   return (
     <span
       className={`mt-0.5 shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${toneClass}`}
@@ -68,9 +67,7 @@ function LessonRow({ lesson }: { lesson: DayLessonEntry }) {
             {title}
           </p>
           {lesson.cancelled && <StatusBadge label="fällt aus" tone="orange" />}
-          {lesson.isEvent && !lesson.cancelled && (
-            <StatusBadge label="Veranstaltung" tone="violet" />
-          )}
+          {lesson.isEvent && !lesson.cancelled && <StatusBadge label="Veranstaltung" tone="sky" />}
         </div>
         {meta && <p className="mt-0.5 text-xs text-slate-500 break-words">{meta}</p>}
       </div>
@@ -101,7 +98,7 @@ function SkeletonRows() {
  * Inline preview of a single day's lessons, loaded on demand from
  * /api/day-timetable. A glance at the day's plan before deciding to open the
  * full WebUntis week — held lessons green, cancelled orange (struck through),
- * special events violet. Vertical list → works on mobile inside the day dialog.
+ * special events sky-blue. Vertical list → works on mobile inside the day dialog.
  */
 export default function DayTimetablePreview({ classIds, date }: DayTimetablePreviewProps) {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
