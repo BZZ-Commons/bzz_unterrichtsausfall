@@ -65,7 +65,7 @@ export const GET = withRateLimit(async (request: Request): Promise<NextResponse>
       ]);
 
       // `years` is non-null only in production (the dev server skips the fetch and
-      // the gate). Unknown/not-yet-started year → gated (isPreviewGateOpen is false).
+      // the gate). Unknown year, or one before its 1-July preview window → gated.
       if (years && !isPreviewGateOpen(findSchoolYearForDate(years, day.getTime()), Date.now())) {
         return null;
       }
@@ -75,7 +75,7 @@ export const GET = withRateLimit(async (request: Request): Promise<NextResponse>
 
     if (result === null) {
       return NextResponse.json(
-        { error: 'Preview is only available once the school year has started' },
+        { error: 'Preview is only available from 1 July of the school year' },
         { status: 403 },
       );
     }

@@ -43,14 +43,29 @@ export function hasSchoolYearStarted(year: SchoolYearSummary | undefined, now: n
 }
 
 /**
+ * Whether `now` is on or after 1 July of the school year's start year — the point
+ * from which next year's plan is stable enough to expose its day-timetable details,
+ * even though the year itself only begins in mid-August. Derived purely from the
+ * start year in `startDate` (e.g. `'2026-…'` → 1 July 2026, 00:00 UTC).
+ */
+export function isPreviewWindowOpen(year: SchoolYearSummary | undefined, now: number): boolean {
+  if (!year) return false;
+  const startYear = Number(year.startDate.slice(0, 4));
+  if (!Number.isFinite(startYear)) return false;
+  const july1 = Date.UTC(startYear, 6, 1); // month 6 = July
+  return now >= july1;
+}
+
+/**
  * Whether the day-timetable preview may be shown for `year`. The dev server
- * always allows it (for local testing); production gates it until the year has
- * begun — a not-yet-started year's plan is only a draft. Shared by the UI gate
- * (app/page.tsx) and the API route so the two layers can't drift.
+ * always allows it (for local testing); production opens it from 1 July of the
+ * year's start year (see {@link isPreviewWindowOpen}) so next year's plan can be
+ * inspected over the summer. Shared by the UI gate (app/page.tsx) and the API
+ * route so the two layers can't drift.
  */
 export function isPreviewGateOpen(year: SchoolYearSummary | undefined, now: number): boolean {
   if (process.env.NODE_ENV !== 'production') return true;
-  return hasSchoolYearStarted(year, now);
+  return isPreviewWindowOpen(year, now);
 }
 
 /** The school year whose date range contains `date` (epoch ms), or undefined if none. */

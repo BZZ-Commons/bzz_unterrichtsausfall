@@ -5,6 +5,7 @@ import {
   isDraftSchoolYear,
   hasSchoolYearStarted,
   findSchoolYearForDate,
+  isPreviewWindowOpen,
   isPreviewGateOpen,
 } from '@/src/lib/schoolYear';
 import type { SchoolYearSummary } from '@/src/types';
@@ -100,17 +101,37 @@ describe('findSchoolYearForDate', () => {
   });
 });
 
+describe('isPreviewWindowOpen', () => {
+  it('is closed before 1 July of the start year', () => {
+    expect(isPreviewWindowOpen(YEAR_2627, at('2026-06-30T23:59:59.000Z'))).toBe(false);
+  });
+
+  it('opens from 1 July of the start year, before the year actually starts', () => {
+    expect(isPreviewWindowOpen(YEAR_2627, at('2026-07-01T00:00:00.000Z'))).toBe(true);
+    expect(isPreviewWindowOpen(YEAR_2627, at('2026-08-01T00:00:00.000Z'))).toBe(true);
+  });
+
+  it('is open for the current, long-started year', () => {
+    expect(isPreviewWindowOpen(YEAR_2526, at('2026-06-11T00:00:00.000Z'))).toBe(true);
+  });
+
+  it('returns false for an undefined year', () => {
+    expect(isPreviewWindowOpen(undefined, at('2026-06-11T00:00:00.000Z'))).toBe(false);
+  });
+});
+
 describe('isPreviewGateOpen', () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it('is always open on the dev server, even for a not-yet-started year', () => {
+  it('is always open on the dev server, even outside the preview window', () => {
     vi.stubEnv('NODE_ENV', 'development');
     expect(isPreviewGateOpen(YEAR_2627, at('2026-06-11T00:00:00.000Z'))).toBe(true);
   });
 
-  it('in production, gates a not-yet-started year but allows a started one', () => {
+  it('in production, gates before 1 July but opens the next year from 1 July', () => {
     vi.stubEnv('NODE_ENV', 'production');
     expect(isPreviewGateOpen(YEAR_2627, at('2026-06-11T00:00:00.000Z'))).toBe(false);
+    expect(isPreviewGateOpen(YEAR_2627, at('2026-07-01T00:00:00.000Z'))).toBe(true);
     expect(isPreviewGateOpen(YEAR_2526, at('2026-06-11T00:00:00.000Z'))).toBe(true);
   });
 
