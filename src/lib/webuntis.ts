@@ -147,6 +147,23 @@ export async function fetchClassTimetableWeek(
 }
 
 /**
+ * Fetch one teacher's timetable for a single day, validated into `UntisLesson[]`.
+ * A teacher's all-day "Unterrichtsausfall: …" event is the only place the real
+ * reason for a cancelled lesson lives (the cancelled lesson itself carries none) —
+ * used by `fetchTeacherAusfallReasons` to enrich Unterrichtsausfall days.
+ */
+export async function fetchTeacherTimetableDay(
+  untis: WebUntis,
+  day: Date,
+  teacherId: number,
+): Promise<UntisLesson[]> {
+  const raw = await withRateLimitRetry(() =>
+    untis.getTimetableForRange(day, day, teacherId, 2 /* WebUntis.TYPES.TEACHER */),
+  );
+  return parseUntisLessons(raw, `timetable for teacher ${teacherId}`);
+}
+
+/**
  * Creates a WebUntis client, logs in, runs `fn`, then logs out.
  * Guarantees logout even on error — callers only write the domain logic.
  */

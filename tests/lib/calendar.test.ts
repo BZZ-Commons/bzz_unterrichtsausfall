@@ -9,6 +9,8 @@ import {
   findSuspiciousLessons,
   removeNonSchoolDayBookings,
   SUSPICIOUS_LSNUMBER_THRESHOLD,
+  extractAusfallReason,
+  teacherReasonKey,
 } from '@/src/lib/calendar';
 import type { CalendarDay, UntisHoliday, UntisLesson, UntisSchoolYear } from '@/src/types';
 
@@ -1183,5 +1185,98 @@ describe('removeNonSchoolDayBookings', () => {
     const lessons = [...mondays, wednesdayLesson];
     const result = removeNonSchoolDayBookings(lessons, new Set([bookingOnWednesday.id]));
     expect(result).toContain(wednesdayLesson);
+  });
+});
+
+// ─── teacher reason enrichment ───────────────────────────────────────────────
+// A cancelled lesson carries no reason; the real cause lives on the teacher's own
+// all-day "Unterrichtsausfall: …" event (mirrors the 7.6.2027 ME25a case where the
+// companion AB event "QV Allgemeinbildender Unterricht" was borrowed onto a
+// Berufskunde cancellation whose true reason is "QV BM & KV").
+
+describe('extractAusfallReason', () => {
+  it('returns the stripped reason for an Unterrichtsausfall teacher event', () => {
+    expect(
+      extractAusfallReason({
+        id: 1,
+        date: 20250915,
+        code: 'irregular',
+        su: [],
+        lstext: 'Unterrichtsausfall: QV BM & KV',
+      }),
+    ).toBe('QV BM & KV');
+  });
+
+  it('returns undefined for a normal cancelled lesson (has a subject)', () => {
+    expect(
+      extractAusfallReason({ id: 1, date: 20250915, code: 'cancelled', su: [{ name: '279' }] }),
+    ).toBeUndefined();
+  });
+
+  it('returns undefined for a Veranstaltung event without the Unterrichtsausfall prefix', () => {
+    expect(
+      extractAusfallReason({
+        id: 1,
+        date: 20250915,
+        code: 'irregular',
+        su: [],
+        lstext: 'Sprachaufenthalt',
+      }),
+    ).toBeUndefined();
+  });
+});
+
+describe('classifyDays — teacher reason enrichment', () => {
+  const LONG_SCHOOL_YEAR: UntisSchoolYear = {
+    id: 1,
+    name: '2025/2026',
+    startDate: new Date(2025, 7, 18), // Mon Aug 18
+    endDate: new Date(2025, 8, 19), // Fri Sep 19 (5 weeks)
+  };
+  // Weeks 1–4 Mondays establish Monday as the class's school day.
+  const priorMondays = [20250818, 20250825, 20250901, 20250908].map((d) => makeLesson(d));
+  // Week 5 Monday (20250915): a Berufskunde lesson cancelled by teacher ÖzBe.
+  const cancelledByOezBe = (): UntisLesson => ({
+    id: lessonIdCounter++,
+    date: 20250915,
+    code: 'cancelled',
+    startTime: 900,
+    te: [{ name: 'ÖzBe' }],
+    sourceClassId: 100,
+  });
+  // A companion class's overlapping blanket Unterrichtsausfall event (different reason).
+  const companionAbuEvent = (): UntisLesson => ({
+    id: lessonIdCounter++,
+    date: 20250915,
+    code: 'irregular',
+    su: [],
+    startTime: 745,
+    lstext: 'Unterrichtsausfall: QV Allgemeinbildender Unterricht',
+    sourceClassId: 200,
+  });
+
+  it('prefers the teacher event reason over the borrowed class-level event', () => {
+    const lessons = [...priorMondays, cancelledByOezBe(), companionAbuEvent()];
+    const reasons = new Map([[teacherReasonKey('ÖzBe', 20250915), 'QV BM & KV']]);
+    const mon = classifyDays(LONG_SCHOOL_YEAR, [], lessons, reasons).find(
+      (d) => d.date === '2025-09-15',
+    );
+    expect(mon?.type).toBe('unterrichtsausfall');
+    expect(mon?.eventName).toBe('QV BM & KV');
+    expect(mon?.halfDay?.morning.reason).toBe('QV BM & KV');
+  });
+
+  it('falls back to the class-level reason when no teacher reason exists (knock-on cancellation)', () => {
+    const lessons = [...priorMondays, cancelledByOezBe(), companionAbuEvent()];
+    const mon = classifyDays(LONG_SCHOOL_YEAR, [], lessons, new Map()).find(
+      (d) => d.date === '2025-09-15',
+    );
+    expect(mon?.eventName).toBe('QV Allgemeinbildender Unterricht');
+  });
+
+  it('defaults to an empty reason map when the argument is omitted', () => {
+    const lessons = [...priorMondays, cancelledByOezBe()];
+    const mon = classifyDays(LONG_SCHOOL_YEAR, [], lessons).find((d) => d.date === '2025-09-15');
+    expect(mon?.type).toBe('unterrichtsausfall');
   });
 });

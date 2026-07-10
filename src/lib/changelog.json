@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.2.4",
+    "date": "2026-07-10",
+    "changes": [
+      "Bei einem Unterrichtsausfall wird neu der zutreffende Grund angezeigt: Er wird direkt vom Stundenplan der ausfallenden Lehrperson übernommen. Bisher konnte an gemischten Tagen versehentlich der Grund einer Partnerklasse erscheinen (z. B. „QV Allgemeinbildender Unterricht“ statt „QV BM & KV“ bei ausgefallenem Berufskunde-Unterricht)."
+    ]
+  },
+  {
     "version": "1.2.3",
     "date": "2026-07-10",
     "changes": [

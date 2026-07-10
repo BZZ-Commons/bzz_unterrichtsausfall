@@ -11,6 +11,7 @@ import {
   toUntisSchoolYear,
   fetchClassTimetable,
   fetchClassTimetableWeek,
+  fetchTeacherTimetableDay,
   mapWithConcurrency,
 } from '@/src/lib/webuntis';
 import { fetchSchoolPeriods } from '@/src/lib/schoolPeriods';
@@ -22,8 +23,18 @@ import {
   removeNonSchoolDayBookings,
   parseUntisDate,
   getWeekKey,
+  isoToUntisDate,
+  extractAusfallReason,
+  teacherReasonKey,
+  type TeacherReasonMap,
 } from '@/src/lib/calendar';
-import type { CalendarData, SchoolPeriod, SchoolYearSummary, UntisLesson } from '@/src/types';
+import type {
+  CalendarData,
+  CalendarDay,
+  SchoolPeriod,
+  SchoolYearSummary,
+  UntisLesson,
+} from '@/src/types';
 
 /** A WebUntis booking ("Zusätzlicher Unterricht") is flagged by this lessonCode. */
 const WEBUNTIS_ACTIVITY_CODE = 'WEBUNTIS_ACTIVITY';
@@ -125,6 +136,55 @@ export async function fetchSchoolPeriodsForYear(
 }
 
 /**
+ * Build the (teacher, day) → real-reason map for Unterrichtsausfall days.
+ *
+ * A cancelled lesson carries no reason of its own; the teacher who would hold it
+ * has an all-day "Unterrichtsausfall: …" event naming the true cause (e.g. "QV BM &
+ * KV"). We fetch that event only for the teachers of lessons cancelled on days
+ * already classified as Unterrichtsausfall — so cost scales with the (few) ausfall
+ * days, not the whole year. Best-effort: any failure (e.g. no read access to
+ * teacher timetables) degrades to an empty map, keeping the class-level reason.
+ */
+async function fetchTeacherAusfallReasons(
+  untis: WebUntis,
+  lessons: UntisLesson[],
+  ausfallDates: ReadonlySet<number>,
+): Promise<TeacherReasonMap> {
+  // Distinct (teacher, day) pairs among lessons cancelled on an Unterrichtsausfall day.
+  const pairs = new Map<string, { name: string; date: number }>();
+  for (const l of lessons) {
+    if (l.code !== 'cancelled' || !ausfallDates.has(l.date)) continue;
+    for (const t of l.te ?? []) {
+      pairs.set(teacherReasonKey(t.name, l.date), { name: t.name, date: l.date });
+    }
+  }
+  if (pairs.size === 0) return new Map();
+
+  try {
+    const teachers = await untis.getTeachers();
+    const idByName = new Map<string, number>();
+    for (const t of teachers) idByName.set(t.name, t.id);
+
+    const tasks = [...pairs.values()].filter((p) => idByName.has(p.name));
+    const reasons = new Map<string, string>();
+    await mapWithConcurrency(tasks, 4, async (p) => {
+      const periods = await fetchTeacherTimetableDay(
+        untis,
+        parseUntisDate(p.date),
+        idByName.get(p.name)!,
+      );
+      const reason = periods.map(extractAusfallReason).find(Boolean);
+      if (reason) reasons.set(teacherReasonKey(p.name, p.date), reason);
+    });
+    return reasons;
+  } catch {
+    // Teacher-timetable access may be denied for the service account — fall back
+    // silently to the class-level reason rather than failing the whole calendar.
+    return new Map();
+  }
+}
+
+/**
  * Classified school-year calendar for a set of merged class timetables
  * (a class plus its companions). Fetches holidays + all timetables, tags and
  * dedups the lessons, and classifies every day of the year.
@@ -145,7 +205,19 @@ export async function buildClassCalendar(
   // Drop manually-created WebUntis bookings on non-school days so they don't paint
   // phantom lessons onto free days (or invent school days).
   const lessons = await stripWebUntisBookings(untis, classIds, rawLessons);
-  const days = classifyDays(schoolYear, holidays, lessons);
+
+  // First pass finds which days are Unterrichtsausfall; the second pass enriches
+  // their cancelled lessons with the real reason pulled from the teacher timetables.
+  const firstPass = classifyDays(schoolYear, holidays, lessons);
+  const ausfallDates = new Set(
+    firstPass
+      .filter((d: CalendarDay) => d.type === 'unterrichtsausfall')
+      .map((d) => isoToUntisDate(d.date)),
+  );
+  const teacherReasons = await fetchTeacherAusfallReasons(untis, lessons, ausfallDates);
+  const days = teacherReasons.size
+    ? classifyDays(schoolYear, holidays, lessons, teacherReasons)
+    : firstPass;
 
   return {
     schoolYear: {
