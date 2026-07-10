@@ -41,6 +41,10 @@ function LessonRow({ lesson }: { lesson: DayLessonEntry }) {
   const meta = [lesson.room, lesson.teacher].filter(Boolean).join(' · ');
   const title = lesson.subject || lesson.text || 'Lektion';
   const spansSlot = lesson.endTime > lesson.startTime;
+  // Reason line for a teacher-caused cancellation. The teacher's name already shows
+  // in the meta line, so this reads literally "Ausfall Lehrperson wegen <Grund>".
+  const reasonLine =
+    lesson.cancelled && lesson.reason ? `Ausfall Lehrperson wegen ${lesson.reason}` : undefined;
 
   return (
     <li className="flex gap-3">
@@ -70,6 +74,9 @@ function LessonRow({ lesson }: { lesson: DayLessonEntry }) {
           {lesson.isEvent && !lesson.cancelled && <StatusBadge label="Veranstaltung" tone="sky" />}
         </div>
         {meta && <p className="mt-0.5 text-xs text-slate-500 break-words">{meta}</p>}
+        {reasonLine && (
+          <p className="mt-0.5 text-xs font-medium text-orange-600 break-words">{reasonLine}</p>
+        )}
       </div>
     </li>
   );

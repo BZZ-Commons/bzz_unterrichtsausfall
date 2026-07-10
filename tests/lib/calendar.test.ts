@@ -1255,15 +1255,16 @@ describe('classifyDays — teacher reason enrichment', () => {
     sourceClassId: 200,
   });
 
-  it('prefers the teacher event reason over the borrowed class-level event', () => {
+  it('suppresses the day-level reason when the cancellation is teacher-caused (plain orange)', () => {
     const lessons = [...priorMondays, cancelledByOezBe(), companionAbuEvent()];
     const reasons = new Map([[teacherReasonKey('ÖzBe', 20250915), 'QV BM & KV']]);
     const mon = classifyDays(LONG_SCHOOL_YEAR, [], lessons, reasons).find(
       (d) => d.date === '2025-09-15',
     );
     expect(mon?.type).toBe('unterrichtsausfall');
-    expect(mon?.eventName).toBe('QV BM & KV');
-    expect(mon?.halfDay?.morning.reason).toBe('QV BM & KV');
+    // No borrowed reason on the day cell — the real reason moves to the per-lesson preview.
+    expect(mon?.eventName).toBeUndefined();
+    expect(mon?.halfDay?.morning.reason).toBeUndefined();
   });
 
   it('falls back to the class-level reason when no teacher reason exists (knock-on cancellation)', () => {

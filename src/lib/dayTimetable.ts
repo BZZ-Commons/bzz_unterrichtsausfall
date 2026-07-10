@@ -8,7 +8,7 @@
  * the preview renders.
  */
 
-import { isEventPeriod } from '@/src/lib/calendar';
+import { isEventPeriod, isUnterrichtsausfallEvent } from '@/src/lib/calendar';
 import type { DayLessonEntry, UntisLesson } from '@/src/types';
 
 /**
@@ -21,17 +21,25 @@ export type DayTimetableLesson = Pick<
   'startTime' | 'endTime' | 'code' | 'su' | 'te' | 'ro' | 'lstext' | 'substText' | 'sourceClassId'
 >;
 
-function toEntry(l: DayTimetableLesson): DayLessonEntry {
+/**
+ * Resolve a cancelled lesson's reason from its teacher's cancellation event.
+ * The day is fixed by the caller, so only the lesson's teachers are needed.
+ */
+export type LessonReasonResolver = (l: DayTimetableLesson) => string | undefined;
+
+function toEntry(l: DayTimetableLesson, reasonOf?: LessonReasonResolver): DayLessonEntry {
   const event = isEventPeriod(l);
+  const cancelled = l.code === 'cancelled';
   return {
     startTime: l.startTime as number,
     endTime: l.endTime ?? (l.startTime as number),
     subject: l.su?.[0]?.name ?? '',
     room: l.ro?.[0]?.name || undefined,
     teacher: l.te?.[0]?.name || undefined,
-    cancelled: l.code === 'cancelled',
+    cancelled,
     isEvent: event,
     text: event ? l.lstext || l.substText || undefined : undefined,
+    reason: cancelled ? reasonOf?.(l) : undefined,
     sourceClassId: l.sourceClassId,
   };
 }
@@ -44,7 +52,8 @@ function sameBlock(a: DayLessonEntry, b: DayLessonEntry): boolean {
     a.teacher === b.teacher &&
     a.cancelled === b.cancelled &&
     a.isEvent === b.isEvent &&
-    a.text === b.text
+    a.text === b.text &&
+    a.reason === b.reason
   );
 }
 
@@ -53,10 +62,19 @@ function sameBlock(a: DayLessonEntry, b: DayLessonEntry): boolean {
  * placed), sort chronologically and merge contiguous same-subject blocks so a
  * double period reads as one row spanning both slots.
  */
-export function buildDayTimetable(lessons: DayTimetableLesson[]): DayLessonEntry[] {
+export function buildDayTimetable(
+  lessons: DayTimetableLesson[],
+  reasonOf?: LessonReasonResolver,
+): DayLessonEntry[] {
   const entries = lessons
-    .filter((l) => typeof l.startTime === 'number')
-    .map(toEntry)
+    // Keep only placeable lessons, dropping "Unterrichtsausfall: …" blanket event
+    // periods: they aren't lessons and aren't real Veranstaltungen — just markers
+    // whose (often borrowed) reason should not surface here. The real per-lesson
+    // reason comes via `reasonOf`.
+    .filter(
+      (l) => typeof l.startTime === 'number' && !(isEventPeriod(l) && isUnterrichtsausfallEvent(l)),
+    )
+    .map((l) => toEntry(l, reasonOf))
     .sort((a, b) => a.startTime - b.startTime || a.subject.localeCompare(b.subject));
 
   const merged: DayLessonEntry[] = [];

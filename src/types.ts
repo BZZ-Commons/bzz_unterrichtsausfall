@@ -160,6 +160,12 @@ export interface DayLessonEntry {
   isEvent: boolean;
   /** Free text for an event period (lstext / substText). */
   text?: string;
+  /**
+   * Cancellation reason for a cancelled lesson, taken from the teacher's own
+   * all-day "Unterrichtsausfall: …" event (e.g. "QV BM & KV"). Shown per lesson in
+   * the preview; the day cell itself stays plain orange for teacher-caused ausfall.
+   */
+  reason?: string;
   /** Class this block was fetched under (for merged single-day views). */
   sourceClassId?: number;
 }

@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.2.5",
+    "date": "2026-07-10",
+    "changes": [
+      "Bei einem Unterrichtsausfall, der von einer Lehrperson herrührt, bleibt der Tag in der Übersicht neu einfach orange – ohne Grund auf der Kachel. Der genaue Grund erscheint stattdessen bei der einzelnen Lektion in der Tagesstundenplan-Vorschau («Ausfall Lehrperson wegen …»). So wird nicht mehr versehentlich der Grund einer Partnerklasse angezeigt.",
+      "Ganztägige «Unterrichtsausfall»-Markierungen werden in der Tagesstundenplan-Vorschau nicht mehr als eigene Zeile aufgeführt."
+    ]
+  },
+  {
     "version": "1.2.4",
     "date": "2026-07-10",
     "changes": [

@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { withUntisClient } from '@/src/lib/webuntis';
 import { buildDayTimetable } from '@/src/lib/dayTimetable';
-import { fetchMergedClassLessons, fetchSchoolYearSummaries } from '@/src/lib/calendar-server';
+import {
+  fetchMergedClassLessons,
+  fetchSchoolYearSummaries,
+  fetchTeacherAusfallReasons,
+} from '@/src/lib/calendar-server';
+import { isoToUntisDate, resolveTeacherReason } from '@/src/lib/calendar';
 import { findSchoolYearForDate, isPreviewGateOpen } from '@/src/lib/schoolYear';
 import { withRateLimit } from '@/src/lib/apiRateLimit';
 import { errorResponse } from '@/src/lib/apiError';
@@ -70,7 +75,18 @@ export const GET = withRateLimit(async (request: Request): Promise<NextResponse>
         return null;
       }
 
-      return { date: dateParam, lessons: buildDayTimetable(lessons) } satisfies DayTimetable;
+      // Enrich cancelled lessons with the real reason from the teacher's own
+      // cancellation event (the cancelled lesson itself carries none). Scoped to
+      // this one day, so at most a handful of teacher fetches.
+      const untisDate = isoToUntisDate(dateParam);
+      const teacherReasons = await fetchTeacherAusfallReasons(untis, lessons, new Set([untisDate]));
+
+      return {
+        date: dateParam,
+        lessons: buildDayTimetable(lessons, (l) =>
+          resolveTeacherReason(teacherReasons, l.te, untisDate),
+        ),
+      } satisfies DayTimetable;
     });
 
     if (result === null) {

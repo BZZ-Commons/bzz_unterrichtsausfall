@@ -145,7 +145,7 @@ export async function fetchSchoolPeriodsForYear(
  * days, not the whole year. Best-effort: any failure (e.g. no read access to
  * teacher timetables) degrades to an empty map, keeping the class-level reason.
  */
-async function fetchTeacherAusfallReasons(
+export async function fetchTeacherAusfallReasons(
   untis: WebUntis,
   lessons: UntisLesson[],
   ausfallDates: ReadonlySet<number>,
