@@ -10,7 +10,6 @@ import {
   removeNonSchoolDayBookings,
   SUSPICIOUS_LSNUMBER_THRESHOLD,
   extractAusfallReason,
-  teacherReasonKey,
 } from '@/src/lib/calendar';
 import type { CalendarDay, UntisHoliday, UntisLesson, UntisSchoolYear } from '@/src/types';
 
@@ -1226,58 +1225,71 @@ describe('extractAusfallReason', () => {
   });
 });
 
-describe('classifyDays — teacher reason enrichment', () => {
+describe('classifyDays — Unterrichtsausfall day reason (own vs borrowed event)', () => {
   const LONG_SCHOOL_YEAR: UntisSchoolYear = {
     id: 1,
     name: '2025/2026',
     startDate: new Date(2025, 7, 18), // Mon Aug 18
     endDate: new Date(2025, 8, 19), // Fri Sep 19 (5 weeks)
   };
+  const PRIMARY = 100; // selected class
+  const COMPANION = 200;
   // Weeks 1–4 Mondays establish Monday as the class's school day.
   const priorMondays = [20250818, 20250825, 20250901, 20250908].map((d) => makeLesson(d));
-  // Week 5 Monday (20250915): a Berufskunde lesson cancelled by teacher ÖzBe.
-  const cancelledByOezBe = (): UntisLesson => ({
+  // Week 5 Monday (20250915): a lesson of the primary class cancelled.
+  const cancelledPrimary = (): UntisLesson => ({
     id: lessonIdCounter++,
     date: 20250915,
     code: 'cancelled',
     startTime: 900,
     te: [{ name: 'ÖzBe' }],
-    sourceClassId: 100,
+    sourceClassId: PRIMARY,
   });
-  // A companion class's overlapping blanket Unterrichtsausfall event (different reason).
-  const companionAbuEvent = (): UntisLesson => ({
+  // A blanket Unterrichtsausfall event, tagged with whichever class it was merged under.
+  const ausfallEvent = (sourceClassId: number, text: string): UntisLesson => ({
     id: lessonIdCounter++,
     date: 20250915,
     code: 'irregular',
     su: [],
     startTime: 745,
-    lstext: 'Unterrichtsausfall: QV Allgemeinbildender Unterricht',
-    sourceClassId: 200,
+    lstext: `Unterrichtsausfall: ${text}`,
+    sourceClassId,
   });
 
-  it('suppresses the day-level reason when the cancellation is teacher-caused (plain orange)', () => {
-    const lessons = [...priorMondays, cancelledByOezBe(), companionAbuEvent()];
-    const reasons = new Map([[teacherReasonKey('ÖzBe', 20250915), 'QV BM & KV']]);
-    const mon = classifyDays(LONG_SCHOOL_YEAR, [], lessons, reasons).find(
+  it('suppresses a companion-only (borrowed) event reason — plain orange', () => {
+    const lessons = [
+      ...priorMondays,
+      cancelledPrimary(),
+      ausfallEvent(COMPANION, 'QV Allgemeinbildender Unterricht'),
+    ];
+    const mon = classifyDays(LONG_SCHOOL_YEAR, [], lessons, PRIMARY).find(
       (d) => d.date === '2025-09-15',
     );
     expect(mon?.type).toBe('unterrichtsausfall');
-    // No borrowed reason on the day cell — the real reason moves to the per-lesson preview.
+    // Borrowed reason doesn't explain this class's cancellation → no reason on the cell.
     expect(mon?.eventName).toBeUndefined();
     expect(mon?.halfDay?.morning.reason).toBeUndefined();
   });
 
-  it('falls back to the class-level reason when no teacher reason exists (knock-on cancellation)', () => {
-    const lessons = [...priorMondays, cancelledByOezBe(), companionAbuEvent()];
-    const mon = classifyDays(LONG_SCHOOL_YEAR, [], lessons, new Map()).find(
+  it('shows the reason of an event on the selected class’s own plan (e.g. Weiterbildungstag)', () => {
+    const lessons = [
+      ...priorMondays,
+      cancelledPrimary(),
+      ausfallEvent(PRIMARY, 'Weiterbildungstag Abt. Wirtschaft'),
+    ];
+    const mon = classifyDays(LONG_SCHOOL_YEAR, [], lessons, PRIMARY).find(
       (d) => d.date === '2025-09-15',
     );
-    expect(mon?.eventName).toBe('QV Allgemeinbildender Unterricht');
+    expect(mon?.eventName).toBe('Weiterbildungstag Abt. Wirtschaft');
   });
 
-  it('defaults to an empty reason map when the argument is omitted', () => {
-    const lessons = [...priorMondays, cancelledByOezBe()];
+  it('counts every Unterrichtsausfall event when no primary class is given', () => {
+    const lessons = [
+      ...priorMondays,
+      cancelledPrimary(),
+      ausfallEvent(COMPANION, 'QV Allgemeinbildender Unterricht'),
+    ];
     const mon = classifyDays(LONG_SCHOOL_YEAR, [], lessons).find((d) => d.date === '2025-09-15');
-    expect(mon?.type).toBe('unterrichtsausfall');
+    expect(mon?.eventName).toBe('QV Allgemeinbildender Unterricht');
   });
 });

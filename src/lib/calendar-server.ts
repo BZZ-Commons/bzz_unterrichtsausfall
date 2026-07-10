@@ -23,18 +23,11 @@ import {
   removeNonSchoolDayBookings,
   parseUntisDate,
   getWeekKey,
-  isoToUntisDate,
   extractAusfallReason,
   teacherReasonKey,
   type TeacherReasonMap,
 } from '@/src/lib/calendar';
-import type {
-  CalendarData,
-  CalendarDay,
-  SchoolPeriod,
-  SchoolYearSummary,
-  UntisLesson,
-} from '@/src/types';
+import type { CalendarData, SchoolPeriod, SchoolYearSummary, UntisLesson } from '@/src/types';
 
 /** A WebUntis booking ("Zusätzlicher Unterricht") is flagged by this lessonCode. */
 const WEBUNTIS_ACTIVITY_CODE = 'WEBUNTIS_ACTIVITY';
@@ -206,18 +199,11 @@ export async function buildClassCalendar(
   // phantom lessons onto free days (or invent school days).
   const lessons = await stripWebUntisBookings(untis, classIds, rawLessons);
 
-  // First pass finds which days are Unterrichtsausfall; the second pass enriches
-  // their cancelled lessons with the real reason pulled from the teacher timetables.
-  const firstPass = classifyDays(schoolYear, holidays, lessons);
-  const ausfallDates = new Set(
-    firstPass
-      .filter((d: CalendarDay) => d.type === 'unterrichtsausfall')
-      .map((d) => isoToUntisDate(d.date)),
-  );
-  const teacherReasons = await fetchTeacherAusfallReasons(untis, lessons, ausfallDates);
-  const days = teacherReasons.size
-    ? classifyDays(schoolYear, holidays, lessons, teacherReasons)
-    : firstPass;
+  // A day cell shows an Unterrichtsausfall reason only from an event on the SELECTED
+  // class's own plan (classIds[0]); a companion-only ("borrowed") event stays plain
+  // orange. The teacher-specific per-lesson reason is enriched separately in the
+  // day-timetable preview route, so the year calendar needs no teacher fetches.
+  const days = classifyDays(schoolYear, holidays, lessons, classIds[0]);
 
   return {
     schoolYear: {

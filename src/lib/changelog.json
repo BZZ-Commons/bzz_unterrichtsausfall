@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.2.6",
+    "date": "2026-07-10",
+    "changes": [
+      "Ein schulweiter Unterrichtsausfall (z. B. «Weiterbildungstag») zeigt in der Tagesübersicht wieder seinen Grund an. In v1.2.5 wurde er versehentlich mitunterdrückt – neu bleibt nur der von einer Partnerklasse geborgte Grund ausgeblendet, während der eigene Grund der gewählten Klasse angezeigt wird."
+    ]
+  },
+  {
     "version": "1.2.5",
     "date": "2026-07-10",
     "changes": [
