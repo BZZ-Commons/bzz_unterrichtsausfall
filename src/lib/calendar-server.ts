@@ -13,6 +13,7 @@ import {
   fetchClassTimetableWeek,
   fetchTeacherTimetableDay,
   fetchHolidaysSafe,
+  withRateLimitRetry,
   mapWithConcurrency,
 } from '@/src/lib/webuntis';
 import { fetchSchoolPeriods } from '@/src/lib/schoolPeriods';
@@ -107,7 +108,7 @@ export async function fetchMergedClassLessons(
 
 /** All school years, newest first. */
 export async function fetchSchoolYearSummaries(untis: WebUntis): Promise<SchoolYearSummary[]> {
-  const raw = await untis.getSchoolyears(true);
+  const raw = await withRateLimitRetry(() => untis.getSchoolyears(true));
   return raw
     .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
     .map(

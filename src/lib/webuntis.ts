@@ -57,7 +57,8 @@ export async function resolveSchoolyear(
   yearId: number | null,
 ): Promise<SchoolYear> {
   if (yearId !== null && !isNaN(yearId)) {
-    const found = (await untis.getSchoolyears(true)).find((y) => y.id === yearId);
+    const years = await withRateLimitRetry(() => untis.getSchoolyears(true));
+    const found = years.find((y) => y.id === yearId);
     if (!found) throw new Error(`School year ${yearId} not found`);
     return found;
   }
@@ -74,7 +75,7 @@ export async function resolveSchoolyear(
  * gap). Mirrors the client's `findDefaultSchoolYear`.
  */
 async function getCurrentOrDefaultSchoolyear(untis: WebUntis): Promise<SchoolYear> {
-  const years = await untis.getSchoolyears(true);
+  const years = await withRateLimitRetry(() => untis.getSchoolyears(true));
   if (years.length === 0) throw new Error('No school years available');
   const now = Date.now();
   const containing = years.find(
@@ -135,7 +136,7 @@ export async function mapWithConcurrency<TIn, TOut>(
  * escalating backoff (see {@link RATE_LIMIT_RETRY_BACKOFFS_MS}). Non-retryable
  * errors are rethrown immediately.
  */
-async function withRateLimitRetry<T>(fetchRaw: () => Promise<T>): Promise<T> {
+export async function withRateLimitRetry<T>(fetchRaw: () => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt++) {
     try {
       return await fetchRaw();
@@ -226,28 +227,82 @@ export async function fetchTeacherTimetableDay(
 }
 
 /**
- * Creates a WebUntis client, logs in, runs `fn`, then logs out.
- * Guarantees logout even on error — callers only write the domain logic.
+ * WebUntis revokes a session after "less than 10min of idle" (per its docs), so
+ * we re-login a little before that to keep the shared session usable.
+ */
+const SESSION_MAX_AGE_MS = 8 * 60 * 1000;
+
+let sharedClient: WebUntis | null = null;
+let sharedClientLoginAt = 0;
+/** Login mutex: concurrent callers await the same in-flight login. */
+let loginInFlight: Promise<WebUntis> | null = null;
+
+/** True when an error indicates the WebUntis session is no longer valid. */
+function isSessionError(err: unknown): boolean {
+  return err instanceof Error && /session is not valid|no session id/i.test(err.message);
+}
+
+/** Discard the shared session so the next call logs in fresh. */
+function invalidateSharedClient(): void {
+  sharedClient = null;
+  sharedClientLoginAt = 0;
+}
+
+/**
+ * A logged-in WebUntis client, shared across requests instead of re-created per
+ * call. WebUntis throttles logins per IP, and a fresh login for every API route
+ * (4+ per page load) trips that limit; reusing one warm session collapses those
+ * to a single login. The session is re-created only when older than
+ * {@link SESSION_MAX_AGE_MS} or after a session error. The `loginInFlight` mutex
+ * collapses concurrent bootstrap requests into one login.
+ */
+async function getSharedClient(): Promise<WebUntis> {
+  if (sharedClient && Date.now() - sharedClientLoginAt < SESSION_MAX_AGE_MS) {
+    return sharedClient;
+  }
+  if (loginInFlight) return loginInFlight;
+
+  const stale = sharedClient;
+  invalidateSharedClient();
+  loginInFlight = (async () => {
+    // Best-effort logout of the stale session to free it server-side.
+    if (stale) {
+      try {
+        await stale.logout();
+      } catch {
+        /* already revoked — ignore */
+      }
+    }
+    const client = createUntisClient();
+    // login() is the request most often hit by WebUntis rate-limiting; the
+    // backoff+retry clears the transient case.
+    await withRateLimitRetry(() => client.login());
+    sharedClient = client;
+    sharedClientLoginAt = Date.now();
+    return client;
+  })();
+  try {
+    return await loginInFlight;
+  } finally {
+    loginInFlight = null;
+  }
+}
+
+/**
+ * Run `fn` with a shared, logged-in WebUntis client (see {@link getSharedClient}).
+ * Sessions are reused across calls rather than logging in per request — callers
+ * only write the domain logic. On a session-invalid error the shared session is
+ * discarded and `fn` is retried once with a fresh login.
  */
 export async function withUntisClient<T>(fn: (untis: WebUntis) => Promise<T>): Promise<T> {
-  const untis = createUntisClient();
-  // login() is the request most often hit by WebUntis rate-limiting (429 /
-  // ECONNRESET); a single backoff+retry clears the transient case.
-  await withRateLimitRetry(() => untis.login());
+  const client = await getSharedClient();
   try {
-    const result = await fn(untis);
-    try {
-      await untis.logout();
-    } catch {
-      /* session may have expired during long fetch — ignore */
-    }
-    return result;
+    return await fn(client);
   } catch (error) {
-    try {
-      await untis.logout();
-    } catch {
-      /* ignore secondary logout error */
-    }
-    throw error;
+    if (!isSessionError(error)) throw error;
+    // Session died mid-use (e.g. server-side idle revoke) — re-login once and retry.
+    invalidateSharedClient();
+    const fresh = await getSharedClient();
+    return fn(fresh);
   }
 }

@@ -9,6 +9,7 @@ import {
 } from '@/src/lib/classGroups';
 import { matchesAllowedPrefix, compareClassPriority } from '@/src/lib/classPrefixes';
 import { parseUntisClasses } from '@/src/lib/untisBoundary';
+import { withRateLimitRetry } from '@/src/lib/webuntis';
 import type { UntisClass } from '@/src/types';
 
 /**
@@ -24,7 +25,7 @@ export async function listActiveClassesEnriched(
   schoolYearId: number,
 ): Promise<UntisClass[]> {
   const raw = parseUntisClasses(
-    await untis.getClasses(true, schoolYearId),
+    await withRateLimitRetry(() => untis.getClasses(true, schoolYearId)),
     `classes for school year ${schoolYearId}`,
   );
   const active = raw.filter((c) => c.active && matchesAllowedPrefix(c.name));
