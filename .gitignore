@@ -51,3 +51,7 @@ next-env.d.ts
 *.ntvs*
 *.njsproj
 *.sln
+
+# Playwright MCP scratch artifacts
+.playwright-mcp/
+june-*.png
