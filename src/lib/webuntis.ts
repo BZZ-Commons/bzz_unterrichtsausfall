@@ -2,15 +2,26 @@ import { WebUntis, type SchoolYear } from 'webuntis';
 import type { UntisLesson, UntisSchoolYear, UntisWeekLesson } from '@/src/types';
 import { parseUntisLessons, parseUntisWeekLessons } from '@/src/lib/untisBoundary';
 
-/** WebUntis rate-limit recovery: one retry after a short backoff. */
-const RATE_LIMIT_RETRY_BACKOFF_MS = 1500;
+/**
+ * WebUntis rate-limit recovery: retry backoffs (ms), one per additional attempt.
+ * WebUntis throttles by IP; under load the block escalates from a plain 429 to a
+ * dropped TLS handshake, so a couple of escalating retries clears most cases.
+ */
+const RATE_LIMIT_RETRY_BACKOFFS_MS = [1500, 4000];
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** True when a thrown error looks like a WebUntis rate-limit (429 / ECONNRESET). */
+/**
+ * True when a thrown error looks like a transient WebUntis rate-limit / network
+ * hiccup that a retry can clear. WebUntis throttling surfaces as a 429, a reset
+ * connection (ECONNRESET), a dropped TLS handshake ("socket disconnected before
+ * secure TLS connection"), or a timeout — all worth retrying.
+ */
 function isRateLimitError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
-  return /429|ECONNRESET|rate.?limit/i.test(err.message);
+  return /429|ECONNRESET|ETIMEDOUT|ECONNREFUSED|EAI_AGAIN|rate.?limit|socket disconnected|secure TLS/i.test(
+    err.message,
+  );
 }
 
 /**
@@ -120,16 +131,18 @@ export async function mapWithConcurrency<TIn, TOut>(
 }
 
 /**
- * Run a WebUntis fetch with a single retry on rate-limit errors (429 /
- * ECONNRESET) after a short backoff — empirically enough to clear the limit.
+ * Run a WebUntis fetch, retrying on transient rate-limit / network errors with
+ * escalating backoff (see {@link RATE_LIMIT_RETRY_BACKOFFS_MS}). Non-retryable
+ * errors are rethrown immediately.
  */
 async function withRateLimitRetry<T>(fetchRaw: () => Promise<T>): Promise<T> {
-  try {
-    return await fetchRaw();
-  } catch (err) {
-    if (!isRateLimitError(err)) throw err;
-    await sleep(RATE_LIMIT_RETRY_BACKOFF_MS);
-    return fetchRaw();
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetchRaw();
+    } catch (err) {
+      if (!isRateLimitError(err) || attempt >= RATE_LIMIT_RETRY_BACKOFFS_MS.length) throw err;
+      await sleep(RATE_LIMIT_RETRY_BACKOFFS_MS[attempt]);
+    }
   }
 }
 

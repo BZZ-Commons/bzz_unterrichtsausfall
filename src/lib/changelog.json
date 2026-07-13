@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.2.8",
+    "date": "2026-07-13",
+    "changes": [
+      "Wenn WebUntis wegen zu vieler Anfragen kurzzeitig die Verbindung ablehnt (z. B. «Fehler beim Laden der Schuljahre»), versucht es die App jetzt automatisch mehrmals mit steigender Wartezeit erneut, statt sofort abzubrechen. Neu werden dabei auch abgebrochene TLS-Verbindungen als solche vorübergehenden Aussetzer erkannt."
+    ]
+  },
+  {
     "version": "1.2.7",
     "date": "2026-07-13",
     "changes": [
