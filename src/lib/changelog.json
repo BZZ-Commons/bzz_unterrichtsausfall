@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.2.7",
+    "date": "2026-07-13",
+    "changes": [
+      "Über die Sommerferien – zwischen dem Ende des alten und dem Beginn des neuen Schuljahres – liessen sich der Kalender und die Klassenliste nicht mehr laden («Fehler beim Laden der Kalenderdaten»). Grund war, dass WebUntis in dieser Lücke kein «aktuelles» Schuljahr und keine Ferien liefert; die App fällt jetzt automatisch auf das kommende Schuljahr zurück und zeigt die Vorschau wie gewohnt an."
+    ]
+  },
+  {
     "version": "1.2.6",
     "date": "2026-07-10",
     "changes": [

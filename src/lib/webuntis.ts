@@ -13,6 +13,15 @@ function isRateLimitError(err: unknown): boolean {
   return /429|ECONNRESET|rate.?limit/i.test(err.message);
 }
 
+/**
+ * True when a WebUntis call returned an empty JSON-RPC result — the package
+ * throws `"Server didn't return any result."`. Happens for calls scoped to the
+ * "current" school year during the summer gap between years (no year is active).
+ */
+function isNoResultError(err: unknown): boolean {
+  return err instanceof Error && /didn't return any result/i.test(err.message);
+}
+
 function createUntisClient(): WebUntis {
   const school = process.env.WEBUNTIS_SCHOOL;
   const username = process.env.WEBUNTIS_USERNAME;
@@ -41,7 +50,29 @@ export async function resolveSchoolyear(
     if (!found) throw new Error(`School year ${yearId} not found`);
     return found;
   }
-  return untis.getCurrentSchoolyear(true);
+  return getCurrentOrDefaultSchoolyear(untis);
+}
+
+/**
+ * The "current" school year, resilient to the summer gap between years.
+ *
+ * `untis.getCurrentSchoolyear()` throws "Server didn't return any result" when no
+ * year is active — e.g. between the end of one year in mid-July and the start of
+ * the next in mid-August. We instead pick from the full list: the year whose range
+ * contains today, else the most recent by start date (the upcoming year during the
+ * gap). Mirrors the client's `findDefaultSchoolYear`.
+ */
+async function getCurrentOrDefaultSchoolyear(untis: WebUntis): Promise<SchoolYear> {
+  const years = await untis.getSchoolyears(true);
+  if (years.length === 0) throw new Error('No school years available');
+  const now = Date.now();
+  const containing = years.find(
+    (y) => new Date(y.startDate).getTime() <= now && now <= new Date(y.endDate).getTime(),
+  );
+  if (containing) return containing;
+  return years.reduce((a, b) =>
+    new Date(a.startDate).getTime() >= new Date(b.startDate).getTime() ? a : b,
+  );
 }
 
 /** Convert a raw WebUntis school year into the app's Date-based shape. */
@@ -60,7 +91,7 @@ export function toUntisSchoolYear(raw: SchoolYear): UntisSchoolYear {
  */
 export async function resolveSchoolyearId(untis: WebUntis, yearId: number | null): Promise<number> {
   if (yearId !== null && !isNaN(yearId)) return yearId;
-  return (await untis.getCurrentSchoolyear(true)).id;
+  return (await getCurrentOrDefaultSchoolyear(untis)).id;
 }
 
 /**
@@ -99,6 +130,24 @@ async function withRateLimitRetry<T>(fetchRaw: () => Promise<T>): Promise<T> {
     if (!isRateLimitError(err)) throw err;
     await sleep(RATE_LIMIT_RETRY_BACKOFF_MS);
     return fetchRaw();
+  }
+}
+
+/**
+ * Holidays for the WebUntis "current" school year, degrading to an empty list
+ * when there is no current year — i.e. the summer gap between years, where the
+ * server returns no result and the package throws "Server didn't return any
+ * result". Holidays only paint Ferien cells, so an empty list is a safe
+ * degradation: the rest of the calendar still classifies from the timetables.
+ */
+export async function fetchHolidaysSafe(
+  untis: WebUntis,
+): Promise<Awaited<ReturnType<WebUntis['getHolidays']>>> {
+  try {
+    return await withRateLimitRetry(() => untis.getHolidays(true));
+  } catch (err) {
+    if (isNoResultError(err)) return [];
+    throw err;
   }
 }
 
@@ -169,7 +218,9 @@ export async function fetchTeacherTimetableDay(
  */
 export async function withUntisClient<T>(fn: (untis: WebUntis) => Promise<T>): Promise<T> {
   const untis = createUntisClient();
-  await untis.login();
+  // login() is the request most often hit by WebUntis rate-limiting (429 /
+  // ECONNRESET); a single backoff+retry clears the transient case.
+  await withRateLimitRetry(() => untis.login());
   try {
     const result = await fn(untis);
     try {

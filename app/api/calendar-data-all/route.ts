@@ -4,6 +4,7 @@ import {
   resolveSchoolyear,
   mapWithConcurrency,
   fetchClassTimetable,
+  fetchHolidaysSafe,
 } from '@/src/lib/webuntis';
 import { parseUntisHolidays } from '@/src/lib/untisBoundary';
 import { getCached } from '@/src/lib/serverCache';
@@ -49,7 +50,7 @@ export const GET = withRateLimit(async (request: Request): Promise<NextResponse>
         // Classes and holidays are independent — fetch in parallel.
         const [classes, rawHolidays] = await Promise.all([
           listActiveClassesEnriched(untis, schoolYear.id),
-          untis.getHolidays(true),
+          fetchHolidaysSafe(untis),
         ]);
         const holidays = parseUntisHolidays(rawHolidays, 'holidays');
 

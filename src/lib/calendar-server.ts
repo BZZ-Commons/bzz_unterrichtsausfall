@@ -12,6 +12,7 @@ import {
   fetchClassTimetable,
   fetchClassTimetableWeek,
   fetchTeacherTimetableDay,
+  fetchHolidaysSafe,
   mapWithConcurrency,
 } from '@/src/lib/webuntis';
 import { fetchSchoolPeriods } from '@/src/lib/schoolPeriods';
@@ -191,7 +192,7 @@ export async function buildClassCalendar(
 
   // Holidays fetch runs in parallel with the (already-parallel) class timetables.
   const [rawHolidays, rawLessons] = await Promise.all([
-    untis.getHolidays(true),
+    fetchHolidaysSafe(untis),
     fetchMergedClassLessons(untis, schoolYear, classIds),
   ]);
   const holidays = parseUntisHolidays(rawHolidays, 'holidays');
