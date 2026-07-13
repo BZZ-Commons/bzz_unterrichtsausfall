@@ -972,8 +972,10 @@ describe('classifyDays — reason picks the event of the half’s own class (ove
     });
   });
 
-  it('falls back to any event reason when no event matches the cancelled half’s class', () => {
-    // Cancelled lessons are AB's, but the only event present is tagged to IA.
+  it('suppresses a borrowed event reason when no event owns the cancelled half’s class', () => {
+    // Cancelled lessons are AB's, but the only event present is tagged to IA — it does
+    // not explain AB's cancellation, so it stays borrowed and no reason is shown; the
+    // real, teacher-specific reason surfaces per lesson in the day-timetable preview.
     const mon = mondayOf([
       allDayEvent('Unterrichtsausfall: QV der Abschlussklassen', IA),
       at(800, 'cancelled', AB),
@@ -982,7 +984,6 @@ describe('classifyDays — reason picks the event of the half’s own class (ove
     expect(mon.halfDay?.morning).toEqual({
       status: 'cancelled',
       classId: AB,
-      reason: 'QV der Abschlussklassen',
     });
   });
 });
@@ -1290,6 +1291,51 @@ describe('classifyDays — Unterrichtsausfall day reason (own vs borrowed event)
       ausfallEvent(COMPANION, 'QV Allgemeinbildender Unterricht'),
     ];
     const mon = classifyDays(LONG_SCHOOL_YEAR, [], lessons).find((d) => d.date === '2025-09-15');
+    expect(mon?.eventName).toBe('QV Allgemeinbildender Unterricht');
+  });
+
+  // The half-day mirror of the "own vs borrowed" rule: an ABU-only day whose only
+  // (cancelled) lessons belong to the companion AB class. The AB event OWNS those
+  // lessons, so its reason is shown on the companion's half even though the selected
+  // class is ME (mirrors the 9./16.6.2027 ME23a case).
+  const cancelledCompanion = (startTime: number): UntisLesson => ({
+    id: lessonIdCounter++,
+    date: 20250915,
+    code: 'cancelled',
+    startTime,
+    te: [{ name: 'ReNi' }],
+    sourceClassId: COMPANION,
+  });
+
+  it('shows the companion event reason on a companion-owned cancelled half', () => {
+    const lessons = [
+      ...priorMondays,
+      cancelledCompanion(800), // morning only, all the companion's
+      ausfallEvent(COMPANION, 'QV Allgemeinbildender Unterricht'),
+    ];
+    const mon = classifyDays(LONG_SCHOOL_YEAR, [], lessons, PRIMARY).find(
+      (d) => d.date === '2025-09-15',
+    );
+    expect(mon?.type).toBe('unterrichtsausfall');
+    expect(mon?.halfDay?.morning).toMatchObject({
+      status: 'cancelled',
+      classId: COMPANION,
+      reason: 'QV Allgemeinbildender Unterricht',
+    });
+    expect(mon?.halfDay?.afternoon.status).toBe('none');
+  });
+
+  it('labels a companion-owned all-cancelled day (single cell) with the companion event reason', () => {
+    const lessons = [
+      ...priorMondays,
+      cancelledCompanion(800), // morning + afternoon → collapses to one orange cell
+      cancelledCompanion(1300),
+      ausfallEvent(COMPANION, 'QV Allgemeinbildender Unterricht'),
+    ];
+    const mon = classifyDays(LONG_SCHOOL_YEAR, [], lessons, PRIMARY).find(
+      (d) => d.date === '2025-09-15',
+    );
+    expect(mon?.halfDay).toBeUndefined();
     expect(mon?.eventName).toBe('QV Allgemeinbildender Unterricht');
   });
 });

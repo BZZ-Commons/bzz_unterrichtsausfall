@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.2.10",
+    "date": "2026-07-13",
+    "changes": [
+      "An einem Tag, an dem nur die Partnerklasse Unterricht hat und dieser dort ausfällt (z. B. ein reiner ABU-Vormittag der AB-Klasse), wird jetzt auch in der gewählten Klasse der Ausfallgrund angezeigt – etwa «QV Allgemeinbildender Unterricht». Bisher blieb die Kachel in diesem Fall ohne Text, weil der Grund fälschlich als «von der Partnerklasse geborgt» unterdrückt wurde, obwohl die ausgefallenen Lektionen wirklich der Partnerklasse gehören."
+    ]
+  },
+  {
     "version": "1.2.9",
     "date": "2026-07-13",
     "changes": [
