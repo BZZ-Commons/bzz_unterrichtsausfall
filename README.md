@@ -35,7 +35,7 @@ Schuljahr erhalten.
 | `class`      | `?class=IN23a`        | Wählt diese Klasse direkt aus                                                        |
 | `companion`  | `?companion=IN23a-BM` | Löst IA-Varianten ohne Dialog auf                                                    |
 | `view`       | `?view=all`           | Öffnet direkt die Alle-Klassen-Ansicht                                               |
-| `details`    | `?details=true`       | Aktiviert den Detailmodus: Normal-Tage mit teilweisem Ausfall werden pink eingefärbt |
+| `details`    | `?details=true`       | Aktiviert den Detailmodus: Normal-Tage mit teilweisem Ausfall werden rosa eingefärbt |
 
 Der `details`-Parameter ist **sitzungspersistent**: Er wird bei jedem URL-Update
 automatisch mitgeschrieben und bleibt beim Wechsel von Klasse oder Schuljahr
@@ -59,10 +59,11 @@ Pairings brauchen keine Logik-Anpassung.
 
 ## Stack
 
-- **Framework**: Next.js 15 (App Router) + React 19
-- **UI**: Tailwind CSS v4 + lucide-react
+- **Framework**: Next.js 16 (App Router) + React 19, Node.js 26 LTS
+- **UI**: [BZZ Design System](https://bzz.eifach.online/design/) (Kopie in `src/styles/bzz-design.css`) + Tailwind CSS v4 + lucide-react, Schrift Inter lokal via `@fontsource-variable/inter`
 - **WebUntis**: `webuntis` npm-Package (Login/Logout pro Request via `withUntisClient()`)
-- **Excel**: `xlsx` (SheetJS)
+- **Excel**: `xlsx` (SheetJS 0.20.x vom SheetJS-CDN — das npm-Paket ist veraltet)
+- **MCP**: `mcp-handler` 2 + `@modelcontextprotocol/server` 2 (stateless Streamable HTTP)
 - **Tests**: Vitest + jsdom
 
 ## Commands
@@ -101,7 +102,7 @@ app/
     calendar-data/route.ts    GET ?classIds=…&schoolyearId=… → klassifizierte Tage (Einzelklasse)
     calendar-data-all/route.ts GET ?schoolyearId=… → aggregierte Tage aller Klassen
 components/
-  SchoolYearCalendar.tsx      Einzelklassen-Kalender; ?details=true → Pink-Einfärbung
+  SchoolYearCalendar.tsx      Einzelklassen-Kalender; ?details=true → Rosa-Einfärbung
   AggregatedCalendar.tsx      Alle-Klassen-Übersicht
   DayDetailsDialog.tsx        Popup mit betroffenen Klassen (Alle-Klassen-Ansicht)
   CalendarLegend.tsx          Farblegende (passt sich an detailsMode an)
@@ -110,13 +111,16 @@ components/
   ViewToggle.tsx              Einzelklasse / Alle Klassen umschalten
   IAVariantDialog.tsx         BM / ABU Dialog für IA-Klassen
   ExportButton.tsx            Excel-Download-Button
+  DialogShell.tsx             Gemeinsamer Dialog-Rahmen (BZZ-Look, Escape/Backdrop schliesst)
+  SiteHeader.tsx              Weisse BZZ-Kopfzeile mit Logo
+  CalendarGridParts.tsx       Wochentag-Kopf, Monatstitel u. Ä. für beide Kalender
 src/
   types.ts                    Geteilte TypeScript-Interfaces
   lib/
     calendar.ts               classifyDays() + Helpers (pur, getestet)
     classGroups.ts            Companion-Rules + IA-Variant-Auflösung
     webuntis.ts               withUntisClient() Wrapper, resolveSchoolyear()
-    calendar-styles.ts        Tailwind-Klassen pro DayType
+    calendar-styles.ts        Tailwind-Klassen pro DayType (Farben: --cal-* in src/index.css)
     calendar-layout.ts        buildMonthGroups() — Wochen/Monate für die Kalenderdarstellung
     exportExcel.ts            exportCalendarToExcel() — erzeugt .xlsx mit SheetJS
 tests/                        Vitest Unit-Tests
@@ -141,13 +145,13 @@ Dateiname: `Unterrichtsausfaelle_<Klasse>_<Schuljahr>.xlsx`
 ## Detailmodus (`?details=true`)
 
 Wenn der Parameter `?details=true` in der URL vorhanden ist, werden normale
-Schultage mit mindestens einer abgesagten Lektion **pink** (`bg-pink-200`)
+Schultage mit mindestens einer abgesagten Lektion **rosa** (`bg-cal-teilausfall`)
 statt grün dargestellt. Die Legende wird entsprechend erweitert. Der Parameter
 bleibt beim Wechsel von Klasse und Schuljahr erhalten.
 
 ## Deployment
 
-Docker (multi-stage Build → `node:20-alpine`-Runner, non-root `nextjs`-User,
+Docker (multi-stage Build → `node:26-alpine`-Runner, non-root `nextjs`-User,
 Next.js `output: 'standalone'`):
 
 ```bash

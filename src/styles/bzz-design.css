@@ -1,0 +1,355 @@
+/*
+ * Kopie von https://bzz.eifach.online/_eifach/design/design.css (Stand 19.11.2026).
+ * Einzige Änderung: Inter kommt aus dem npm-Paket statt vom CDN (keine externen Schriften,
+ * siehe Datenschutzerklärung). Nicht von Hand anpassen – bei Updates neu herunterladen.
+ * Eigene Ergänzungen stehen in src/index.css.
+ */
+/*
+ * Bildungszentrum Zürichsee – Design System für Seiten auf bzz.eifach.online
+ * Grundlage: die neue Website bzz.ch (Stand November 2026) – Inter, BZZ-Blau als Fläche, Flächen statt Linien.
+ *
+ * Einbinden:  <link rel="stylesheet" href="/_eifach/design/design.css">
+ * Tokens:     --bzz-*   Bausteine: .bzz-*   Dokumentation: https://bzz.eifach.online/design/
+ * Grundstil ohne Gewicht (:where) – eigene Gestaltung einer Seite gewinnt immer.
+ * Alle Namen aus der Fassung vom Oktober 2026 gelten weiter; sie haben nur das neue Aussehen.
+ */
+/* Inter wird lokal über @fontsource-variable/inter geladen (app/layout.tsx), nicht vom CDN. */
+
+:root {
+  /* ===== BZZ-Blau – drei Töne, drei Aufgaben ===== */
+  --bzz-blau: #009EE0;          /* Hellblau (Cyan): Akzente ohne Text – Linien, Punkte, Fokus in Grafiken, eine Datenreihe */
+  --bzz-blau-flaeche: #0077B6;  /* Flächen mit weissem Text: Seitenkopf, Aufrufe (4.9:1) */
+  --bzz-blau-text: #0077B6;     /* Links und Text in Blau – dasselbe Blau wie --bzz-blau-flaeche (4.9:1 auf Weiss, 4.5:1 auf Hellgrau und Softblau) */
+  --bzz-blau-dunkel: #00659B;   /* dunkleres Blau wie der Fussbalken von bzz.ch (BZZ-Blau mit 15 % Schwarz): Hover von Knöpfen, dunklere Flächen – weisse Schrift 6.3:1 */
+  --bzz-blau-hover: var(--bzz-blau-dunkel); /* Hover des Hauptknopfs */
+  --bzz-dunkelblau: #00407C;    /* Abdunklung hinter Overlays */
+  --bzz-softblau: #EDF8FD;      /* helle Fläche: Hinweis, Hover von Zeilen und Knöpfen, Markierung */
+
+  /* ===== Abteilungsfarben (Berufsfelder) – je Seite höchstens eine als Akzent =====
+     Grundton für Flächen, Punkte und Grafiken; -ink für Text auf Weiss und auf -soft; -soft für helle Flächen */
+  --bzz-informatik: #885EA0;  --bzz-informatik-ink: #6B4682;  --bzz-informatik-soft: #F4EFF7;
+  --bzz-kv: #E30059;          --bzz-kv-ink: #B40047;          --bzz-kv-soft: #FDEBF2;
+  --bzz-fabe: #EB690B;        --bzz-fabe-ink: #A94A05;        --bzz-fabe-soft: #FDF1E7;
+  --bzz-mediamatik: #3EA743;  --bzz-mediamatik-ink: #2B7A2F;  --bzz-mediamatik-soft: #EDF7ED;
+
+  /* ===== Signale ===== */
+  --bzz-signal: #FFCC00;      /* Gelb: nur für Fristen und Warnungen, Text darauf schwarz */
+  --bzz-rot: #D93C1A;         /* Fehler */
+  --bzz-gruen: #1A7F1F;       /* Bestätigung */
+
+  /* ===== Graustufen ===== */
+  --bzz-ink: #000000;         /* Text und Titel */
+  --bzz-ink-2: #333333;       /* Lead, längere Nebentexte */
+  --bzz-muted: #666666;       /* Nebentext und Labels, 5.7:1 auf Weiss */
+  --bzz-line-stark: #808080;  /* Rand von Eingabefeldern */
+  --bzz-line: #CCCCCC;        /* Linien in Grafiken – nicht zum Abgrenzen von Flächen */
+  --bzz-nebel: #F0F0F0;       /* Tags, Hover auf hellen Knöpfen */
+  --bzz-grau: #F7F7F7;        /* Hellgrau: Seitengrund, Panels, Zeilen in Karten */
+  --bzz-weiss: #FFFFFF;       /* Karten und Flächen */
+
+  /* ===== Diagramme – das Raster tritt zurück, die Daten treten hervor ===== */
+  --bzz-raster: #E6E6E6;      /* Rasterlinien, Strich 1 */
+  --bzz-achse: #CCCCCC;       /* Achsen, Strich 1 */
+  --bzz-referenz: #999999;    /* Referenzlinie, Strich 1.5, gestrichelt 4/4 */
+
+  /* ===== Akzent einer Seite (siehe data-accent) ===== */
+  --bzz-accent: var(--bzz-blau-flaeche);          /* Grundton: Punkte, Linien, Grafiken – ohne Text */
+  --bzz-accent-flaeche: var(--bzz-blau-flaeche);  /* Fläche mit Text: Seitenkopf, Aufruf, Schild – Schrift immer weiss */
+  --bzz-accent-ink: var(--bzz-blau-text);
+  --bzz-accent-soft: var(--bzz-softblau);
+  --bzz-on-accent: #FFFFFF;
+
+  /* Ebenen: Seite hellgrau → Karte weiss → Panel hellgrau. --bzz-row ist die Fläche einer Zeile, --bzz-btn-bg die eines Knopfs
+     in der jeweiligen Ebene (auf Hellgrau weiss, auf Weiss grau). */
+  --bzz-row: var(--bzz-weiss);
+  --bzz-btn-bg: var(--bzz-weiss);
+
+  --bzz-font: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --bzz-mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+
+  /* Abstände (8er-Raster) und Radius – überall 2px */
+  --s1: 4px; --s2: 8px; --s3: 16px; --s4: 24px; --s5: 40px; --s6: 64px;
+  --r: 2px; --r-card: 2px; --r-panel: 2px; --r-field: 2px;
+
+  color-scheme: light;
+}
+
+/* Akzent: <body data-accent="informatik"> oder auf einem Abschnitt. Werte: blau (Standard), informatik, kv, fabe, mediamatik.
+   Flächen mit Text tragen immer weisse Schrift; bei Orange und Grün ist die Fläche deshalb die dunkle Variante (-ink),
+   der helle Grundton reicht für Weiss nicht (3:1 statt mindestens 4.5:1). */
+[data-accent="blau"]       { --bzz-accent: var(--bzz-blau-flaeche); --bzz-accent-flaeche: var(--bzz-blau-flaeche);    --bzz-accent-ink: var(--bzz-blau-text);      --bzz-accent-soft: var(--bzz-softblau);         --bzz-on-accent: #FFFFFF; }
+[data-accent="informatik"] { --bzz-accent: var(--bzz-informatik);   --bzz-accent-flaeche: var(--bzz-informatik);      --bzz-accent-ink: var(--bzz-informatik-ink); --bzz-accent-soft: var(--bzz-informatik-soft); --bzz-on-accent: #FFFFFF; }
+[data-accent="kv"]         { --bzz-accent: var(--bzz-kv);           --bzz-accent-flaeche: var(--bzz-kv);              --bzz-accent-ink: var(--bzz-kv-ink);         --bzz-accent-soft: var(--bzz-kv-soft);         --bzz-on-accent: #FFFFFF; }
+[data-accent="fabe"]       { --bzz-accent: var(--bzz-fabe);         --bzz-accent-flaeche: var(--bzz-fabe-ink);        --bzz-accent-ink: var(--bzz-fabe-ink);       --bzz-accent-soft: var(--bzz-fabe-soft);       --bzz-on-accent: #FFFFFF; }
+[data-accent="mediamatik"] { --bzz-accent: var(--bzz-mediamatik);   --bzz-accent-flaeche: var(--bzz-mediamatik-ink);  --bzz-accent-ink: var(--bzz-mediamatik-ink); --bzz-accent-soft: var(--bzz-mediamatik-soft); --bzz-on-accent: #FFFFFF; }
+
+/* ===== Grundstil – Hellgrau als Grund, Inter Black für Titel, Regular für Text ===== */
+:where(html) { -webkit-text-size-adjust: 100%; }
+:where(body) {
+  margin: 0;
+  background: var(--bzz-grau);
+  color: var(--bzz-ink);
+  font: 400 17px/1.6 var(--bzz-font);
+  font-feature-settings: "ss07", "ss08", "cv03", "cv04", "cv10";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+:where(h1, h2, h3, h4) { color: inherit; text-wrap: balance; overflow-wrap: break-word; }
+:where(h1) { font-size: 56px; line-height: 1.05; letter-spacing: -.03em; font-weight: 900; margin: 0 0 var(--s4); }
+:where(h2) { font-size: 36px; line-height: 1.15; letter-spacing: -.025em; font-weight: 900; margin: var(--s6) 0 var(--s3); }
+:where(h3) { font-size: 22px; line-height: 1.25; letter-spacing: -.015em; font-weight: 900; margin: var(--s5) 0 var(--s2); }
+:where(h4) { font-size: 18px; line-height: 1.35; letter-spacing: -.01em; font-weight: 700; margin: var(--s4) 0 var(--s1); }
+:where(p, li) { text-wrap: pretty; }
+:where(strong, b) { font-weight: 700; }
+:where(a) { color: var(--bzz-blau-text); text-decoration-thickness: 1px; text-underline-offset: 4px; }
+:where(a:hover) { text-decoration-thickness: 2px; }
+:where(ul) { list-style-type: "–  "; }
+:where(ol > li)::marker { font-weight: 900; color: var(--bzz-accent-ink); }
+::selection { background: var(--bzz-softblau); }
+/* Fokusring – nicht entfernen */
+:where(:focus-visible) { outline: 2px solid var(--bzz-blau-text); outline-offset: 2px; }
+:where(img, svg, video, canvas) { max-width: 100%; height: auto; }
+:where(button, input, select, textarea) { font: inherit; }
+:where(input[type="range"], progress) { accent-color: var(--bzz-blau-flaeche); }
+/* Checkbox und Radio: eckig (Radio rund), Rand wie Eingabefelder, gewählt in Blau mit weissem Häkchen */
+:where(input[type="checkbox"], input[type="radio"]) {
+  -webkit-appearance: none; appearance: none; flex: none; box-sizing: border-box;
+  width: 20px; height: 20px; margin: 0; vertical-align: -4px; cursor: pointer;
+  border: 1.5px solid var(--bzz-line-stark); border-radius: var(--r);
+  background: var(--bzz-weiss) no-repeat center / 14px 14px;
+  transition: background-color .15s, border-color .15s, box-shadow .15s;
+}
+:where(input[type="radio"]) { border-radius: 50%; }
+:where(input[type="checkbox"], input[type="radio"]):hover { border-color: var(--bzz-blau-flaeche); }
+:where(input[type="checkbox"]:checked) { border-color: var(--bzz-blau-flaeche); background-color: var(--bzz-blau-flaeche); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='square'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E"); }
+:where(input[type="checkbox"]:indeterminate) { border-color: var(--bzz-blau-flaeche); background-color: var(--bzz-blau-flaeche); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.4'%3E%3Cpath d='M3.5 8h9'/%3E%3C/svg%3E"); }
+:where(input[type="radio"]:checked) { border-color: var(--bzz-blau-flaeche); background-color: var(--bzz-blau-flaeche); box-shadow: inset 0 0 0 4px var(--bzz-weiss); }
+:where(input[type="checkbox"], input[type="radio"]):disabled { opacity: .45; cursor: not-allowed; }
+:where(input[type="checkbox"][aria-invalid="true"], input[type="radio"][aria-invalid="true"]) { border-color: var(--bzz-kv-ink); }
+/* Checkbox oder Radio mit Text: <label class="bzz-check"><input type="checkbox"> Text</label> */
+.bzz-check { display: inline-flex; align-items: flex-start; gap: 10px; min-height: 24px; font-size: 16px; line-height: 1.4; cursor: pointer; }
+.bzz-check > input { margin-top: 1px; }
+.bzz-checks { display: grid; gap: var(--s2); }
+:where(figcaption) { margin-top: var(--s2); font-size: 15px; line-height: 1.5; color: var(--bzz-muted); }
+:where(code, pre, kbd) { font-family: var(--bzz-mono); font-size: .9em; }
+@media (max-width: 720px) {
+  /* Lange Wörter in Titeln auf schmalen Bildschirmen trennen statt überlaufen lassen */
+  :where(h1, h2, h3, .bzz-display) { hyphens: auto; -webkit-hyphens: auto; }
+  :where(h1) { font-size: 36px; }
+  :where(h2) { font-size: 28px; margin-top: var(--s5); }
+  :where(h3) { font-size: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* ===== Seitengerüst ===== */
+.bzz-container { width: min(100% - 32px, 1344px); margin-inline: auto; }
+@media (min-width: 640px)  { .bzz-container { width: min(100% - 64px, 1344px); } }
+@media (min-width: 1024px) { .bzz-container { width: min(100% - 96px, 1344px); } }
+/* Kopfzeile: auf jeder Seite gleich – weiss über die ganze Breite, Logo links in fester Grösse,
+   rechts höchstens Download-Knöpfe (.bzz-header-aktionen). Grösse und Farbe sind bewusst nicht überschreibbar. */
+.bzz-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s3); padding-block: 20px; box-sizing: border-box; min-height: 88px !important; background: var(--bzz-weiss) !important; box-shadow: 0 0 0 100vmax var(--bzz-weiss); clip-path: inset(0 -100vmax); --bzz-btn-bg: var(--bzz-nebel); --bzz-row: var(--bzz-grau); }
+/* Logo: immer 48 px hoch, schwarz auf Weiss – nie nachbauen, umfärben, verkleinern oder auf eine Farbfläche setzen */
+.bzz-logo { display: block; height: 48px !important; width: auto !important; max-width: none; flex: none; }
+.bzz-header-aktionen { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s2); margin-left: auto; }
+.bzz-header .bzz-btn { min-height: 40px; padding: 0 16px; font-size: 14px; }
+/* Download-Knopf: Pfeil nach unten vor dem Text, sobald der Link das Attribut download trägt */
+.bzz-btn[download]::before { content: "↓"; font-weight: 700; }
+@media (max-width: 480px) { .bzz-header .bzz-btn { padding: 0 12px; } }
+@media print { .bzz-header-aktionen { display: none; } }
+.bzz-footer { margin-top: var(--s6); padding: var(--s4) 0 var(--s5); color: var(--bzz-muted); font-size: 15px; }
+.bzz-muted { color: var(--bzz-muted); font-size: 15px; }
+.bzz-section { padding-block: var(--s6); }
+
+/* ===== Typografie-Klassen (wie auf der Website) ===== */
+.bzz-display { font-size: clamp(44px, 7vw, 80px); line-height: .95; letter-spacing: -.035em; font-weight: 900; }
+.bzz-lead { font-size: 18px; line-height: 1.55; color: var(--bzz-ink-2); margin: 0 0 var(--s4); max-width: 44rem; }
+@media (min-width: 640px) { .bzz-lead { font-size: 22px; line-height: 1.5; } }
+/* Titelzeile: 12 px fett – über Titeln, in Panels, über Eckdaten */
+.bzz-label { font-size: 12px; line-height: 1.3; font-weight: 700; color: var(--bzz-muted); margin: 0 0 var(--s2); }
+.bzz-small { font-size: 15px; line-height: 1.5; }
+.bzz-data { font-size: 15px; line-height: 1.4; font-weight: 500; font-variant-numeric: tabular-nums; }
+.bzz-datum { font-size: 28px; line-height: 1; font-weight: 900; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+
+/* ===== Flächen – Fläche statt Linie: Hellgrau, Weiss, Akzent ===== */
+/* Seitenkopf in der Akzentfarbe (Standard BZZ-Blau), Titel weiss. <header class="bzz-kopf"><div class="bzz-container">…</div></header> */
+.bzz-kopf { background: var(--bzz-accent-flaeche); color: var(--bzz-on-accent); padding: var(--s4) 0 var(--s6); }
+.bzz-kopf h1 { margin: var(--s5) 0 0; }
+.bzz-kopf .bzz-lead, .bzz-kopf .bzz-label { color: inherit; }
+.bzz-kopf .bzz-lead { margin: var(--s3) 0 0; }
+/* Fläche in der Akzentfarbe, z.B. für einen Aufruf am Seitenende */
+.bzz-flaeche { background: var(--bzz-accent-flaeche); color: var(--bzz-on-accent); border-radius: var(--r); padding: var(--s5); }
+.bzz-kopf a:not(.bzz-btn), .bzz-flaeche a:not(.bzz-btn) { color: inherit; }
+.bzz-kopf :focus-visible, .bzz-flaeche :focus-visible { outline-color: currentColor; }
+@media (max-width: 720px) { .bzz-flaeche { padding: var(--s4); } }
+
+/* Karte: weisse Fläche auf dem hellgrauen Grund, ohne Rahmen und Schatten */
+.bzz-card { background: var(--bzz-weiss); border-radius: var(--r-card); padding: 32px; color: var(--bzz-ink); font-family: var(--bzz-font); --bzz-row: var(--bzz-grau); --bzz-btn-bg: var(--bzz-nebel); }
+.bzz-card > :first-child { margin-top: 0; }
+.bzz-card h2 { font-size: 28px; line-height: 1.15; letter-spacing: -.02em; font-weight: 900; margin: 0 0 var(--s2); }
+.bzz-card .bzz-lead { font-size: 18px; }
+/* Panel: hellgraue Fläche, immer in einer Karte – direkt auf dem Grund wäre es unsichtbar */
+.bzz-panel { background: var(--bzz-grau); border-radius: var(--r-panel); padding: 20px 24px; --bzz-row: var(--bzz-weiss); --bzz-btn-bg: var(--bzz-weiss); }
+@media (max-width: 720px) { .bzz-card { padding: 24px 20px; } .bzz-panel { padding: 16px; } }
+
+/* ===== Knöpfe – rechteckig, BZZ-Blau nur als Fläche ===== */
+.bzz-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 15px/1 var(--bzz-font); min-height: 48px; padding: 0 24px; border: 0; border-radius: var(--r); background: var(--bzz-btn-bg); color: var(--bzz-ink); text-decoration: none; cursor: pointer; transition: background-color .15s, color .15s; }
+.bzz-btn:hover { background: var(--bzz-softblau); color: var(--bzz-blau-text); }
+/* Gewählter Zustand über aria-pressed, damit er auch vorgelesen wird */
+.bzz-btn[aria-pressed="true"] { background: var(--bzz-blau-flaeche); color: #FFFFFF; }
+.bzz-btn[aria-pressed="true"]:hover { background: var(--bzz-blau-dunkel); color: #FFFFFF; }
+/* Auf Farbflächen (Seitenkopf, Aufruf) gewählt schwarz, damit nicht Blau auf Blau steht */
+:is(.bzz-kopf, .bzz-flaeche) .bzz-btn[aria-pressed="true"], :is(.bzz-kopf, .bzz-flaeche) .bzz-btn[aria-pressed="true"]:hover { background: var(--bzz-ink); color: #FFFFFF; }
+.bzz-btn:disabled, .bzz-btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+/* Hauptaktion: Blau Fläche (wie Seitenkopf und Fusszeile) mit weisser Schrift */
+.bzz-btn--primary { background: var(--bzz-blau-flaeche); color: #FFFFFF; }
+.bzz-btn--primary:hover { background: var(--bzz-blau-hover); color: #FFFFFF; }
+.bzz-btn--feld { background: var(--bzz-accent-flaeche); color: var(--bzz-on-accent); }
+.bzz-btn--feld:hover { background: color-mix(in srgb, var(--bzz-accent-flaeche) 85%, #000); color: var(--bzz-on-accent); } /* bei Blau = --bzz-blau-dunkel */
+.bzz-btn--dunkel { background: var(--bzz-ink); color: #FFFFFF; }
+.bzz-btn--dunkel:hover { background: var(--bzz-ink-2); color: #FFFFFF; }
+/* Auf Farbflächen (Seitenkopf, .bzz-flaeche) */
+.bzz-btn--hell { background: #FFFFFF; color: var(--bzz-ink); }
+.bzz-btn--hell:hover { background: var(--bzz-nebel); color: var(--bzz-ink); }
+
+/* Kompakt, z.B. für Vorwahlen unter einem Regler; Gruppe mit 4 px Abstand */
+.bzz-btn--klein { min-height: 36px; padding: 0 12px; font-size: 14px; }
+.bzz-segment { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* Link mit Pfeil – dezenter Aufruf statt eines zweiten Knopfs */
+.bzz-link { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--bzz-blau-text); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 5px; }
+.bzz-link::after { content: "→"; text-decoration: none; display: inline-block; transition: transform .16s ease-out; }
+.bzz-link:hover { text-decoration-thickness: 2px; }
+.bzz-link:hover::after { transform: translateX(4px); }
+
+/* ===== Zeilen ohne Trennlinien: Flächen mit 4 px Abstand (in der Karte grau, auf dem Grund weiss) ===== */
+.bzz-rows { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.bzz-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: 14px 16px; border-radius: var(--r); background: var(--bzz-row); color: var(--bzz-ink); text-decoration: none; }
+a.bzz-row { font-weight: 600; transition: background-color .15s, color .15s; }
+a.bzz-row::after { content: "→"; color: var(--bzz-blau-text); transition: transform .16s ease-out; }
+a.bzz-row:hover { background: var(--bzz-softblau); color: var(--bzz-blau-text); }
+a.bzz-row:hover::after { transform: translateX(4px); }
+
+/* Aufklappen und Fragen (FAQ): <details class="bzz-details"><summary>Frage</summary><div>Antwort</div></details>
+   Mehrere Fragen: <div class="bzz-fragen"> mit einfachen <details> darin – gleiche Gestalt, ohne Klasse je Frage. */
+.bzz-details, .bzz-fragen > details { background: var(--bzz-row); border-radius: var(--r); }
+.bzz-details + .bzz-details, .bzz-fragen > details + details { margin-top: 4px; }
+.bzz-details > summary, .bzz-fragen > details > summary { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s3); padding: 14px 20px; font-weight: 700; line-height: 1.4; cursor: pointer; list-style: none; transition: color .15s; }
+.bzz-details > summary::-webkit-details-marker, .bzz-fragen > details > summary::-webkit-details-marker { display: none; }
+.bzz-details > summary::after, .bzz-fragen > details > summary::after { content: "+"; flex: none; width: 20px; text-align: center; font-weight: 400; font-size: 24px; line-height: 22px; color: var(--bzz-blau-text); transition: transform .16s; }
+.bzz-details > summary:hover, .bzz-fragen > details > summary:hover { color: var(--bzz-blau-text); }
+.bzz-details[open] > summary::after, .bzz-fragen > details[open] > summary::after { transform: rotate(45deg); }
+.bzz-details > :not(summary), .bzz-fragen > details > :not(summary) { padding: 0 20px 18px; }
+.bzz-details > :not(summary) > :first-child, .bzz-fragen > details > :not(summary) > :first-child { margin-top: 0; }
+.bzz-details > :not(summary) > :last-child, .bzz-fragen > details > :not(summary) > :last-child { margin-bottom: 0; }
+
+/* Prüfliste: Bedingungen mit Status – Zeilen als Flächen, der Status als Tag vorne
+   <ul class="bzz-rows bzz-pruefliste"><li class="bzz-row"><span class="bzz-status bzz-status--ok">erfüllt</span><span>Text</span></li></ul> */
+.bzz-pruefliste > .bzz-row, .bzz-pruefliste > li > .bzz-row { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); justify-content: start; align-items: baseline; gap: 4px 16px; }
+@media (max-width: 480px) { .bzz-pruefliste > .bzz-row, .bzz-pruefliste > li > .bzz-row { grid-template-columns: 1fr; } }
+.bzz-status { display: inline-flex; align-items: center; gap: 6px; justify-self: start; height: 24px; padding: 0 8px; border-radius: var(--r); background: var(--bzz-nebel); color: var(--bzz-ink-2); font-size: 12px; line-height: 1; font-weight: 700; white-space: nowrap; }
+.bzz-status::before { content: "○"; font-size: 13px; }
+.bzz-status--ok { background: var(--bzz-mediamatik-soft); color: var(--bzz-gruen); }
+.bzz-status--ok::before { content: "✓"; }
+.bzz-status--nein { background: var(--bzz-kv-soft); color: var(--bzz-kv-ink); }
+.bzz-status--nein::before { content: "✕"; }
+.bzz-status--warten { background: var(--bzz-signal); color: var(--bzz-ink); }
+.bzz-status--warten::before { content: "!"; }
+
+/* Eckdaten: <dl class="bzz-facts"><div><dt>Dauer</dt><dd>3 Jahre</dd></div>…</dl> */
+.bzz-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--s4); margin: 0; padding: 32px; border-radius: var(--r); background: var(--bzz-row); }
+.bzz-facts dt { font-size: 12px; line-height: 1.3; font-weight: 700; color: var(--bzz-muted); }
+.bzz-facts dd { margin: 8px 0 0; font-size: 18px; line-height: 1.35; font-weight: 700; letter-spacing: -.01em; }
+
+/* Tabelle ohne Linien: Zeilen als Flächen */
+.bzz-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; font-size: 16px; }
+.bzz-table th { text-align: left; font-size: 12px; font-weight: 700; color: var(--bzz-muted); padding: 4px 16px; }
+.bzz-table td { background: var(--bzz-row); padding: 12px 16px; vertical-align: top; }
+.bzz-table td:first-child { border-radius: var(--r) 0 0 var(--r); }
+.bzz-table td:last-child { border-radius: 0 var(--r) var(--r) 0; }
+.bzz-table .bzz-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ===== Eingabefelder – der Rand bleibt, damit das Feld als Feld erkennbar ist ===== */
+.bzz-field { display: block; font: 400 16px/1.4 var(--bzz-font); width: 100%; min-height: 48px; padding: 12px 14px; border: 1.5px solid var(--bzz-line-stark); border-radius: var(--r-field); background: var(--bzz-weiss); color: var(--bzz-ink); box-sizing: border-box; transition: border-color .15s, box-shadow .15s; }
+.bzz-field::placeholder { color: var(--bzz-muted); opacity: .7; }
+.bzz-field:focus { outline: none; border-color: var(--bzz-blau-text); box-shadow: 0 0 0 2px rgba(0, 119, 182, .25); }
+.bzz-field[aria-invalid="true"] { border-color: var(--bzz-kv-ink); }
+select.bzz-field { appearance: none; padding-right: 40px; background: var(--bzz-weiss) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center / 16px; }
+.bzz-field-label { display: block; font-size: 12px; line-height: 1.3; font-weight: 700; margin: 0 0 var(--s2); }
+.bzz-error { margin: 6px 0 0; font-size: 14px; font-weight: 500; color: var(--bzz-kv-ink); }
+
+/* ===== Regler (Slider) – flache Spur, rechteckiger Griff =====
+   <div class="bzz-regler"><label for="f">Brennweite</label><output for="f" id="f-wert">50 mm</output>
+     <input class="bzz-range" id="f" type="range" min="24" max="124" value="50"></div>
+   Die blaue Füllung links vom Griff setzt /_eifach/design/design.js (optional); Firefox füllt selbst. */
+.bzz-range { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 32px; margin: 0; padding: 0; background: transparent; cursor: pointer; --wert: 0%; }
+.bzz-range::-webkit-slider-runnable-track { height: 4px; border-radius: var(--r); background: linear-gradient(to right, var(--bzz-blau-flaeche) var(--wert), var(--bzz-line) var(--wert)); }
+.bzz-range::-moz-range-track { height: 4px; border-radius: var(--r); background: var(--bzz-line); }
+.bzz-range::-moz-range-progress { height: 4px; border-radius: var(--r); background: var(--bzz-blau-flaeche); }
+.bzz-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 12px; height: 28px; margin-top: -12px; border: 0; border-radius: var(--r); background: var(--bzz-ink); transition: background-color .15s; }
+.bzz-range::-moz-range-thumb { width: 12px; height: 28px; border: 0; border-radius: var(--r); background: var(--bzz-ink); transition: background-color .15s; }
+.bzz-range:hover::-webkit-slider-thumb { background: var(--bzz-blau-flaeche); }
+.bzz-range:hover::-moz-range-thumb { background: var(--bzz-blau-flaeche); }
+.bzz-range:focus-visible { outline: none; }
+.bzz-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--bzz-weiss), 0 0 0 4px var(--bzz-blau-text); }
+.bzz-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(--bzz-weiss), 0 0 0 4px var(--bzz-blau-text); }
+.bzz-range:disabled { opacity: .45; cursor: not-allowed; }
+/* Regler mit Label, Wert und Skala */
+.bzz-regler { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 4px 16px; }
+.bzz-regler > label { font-weight: 700; }
+.bzz-regler > output { font-weight: 700; color: var(--bzz-blau-text); font-variant-numeric: tabular-nums; }
+.bzz-regler > :not(label, output) { grid-column: 1 / -1; }
+.bzz-regler > p { margin: 4px 0 0; font-size: 15px; color: var(--bzz-muted); }
+.bzz-regler > .bzz-segment { margin-top: var(--s2); }
+.bzz-skala { display: flex; justify-content: space-between; margin-top: -2px; font-size: 12px; font-weight: 500; color: var(--bzz-muted); font-variant-numeric: tabular-nums; }
+
+/* ===== Bilder und Schilder – eckig wie alles andere ===== */
+/* Bild, Canvas, Video, Diagramm-Fläche: Radius 2 px, grau hinterlegt solange es lädt */
+.bzz-bild { display: block; width: 100%; height: auto; border-radius: var(--r); background: var(--bzz-nebel); }
+/* Schild auf einem Bild oder in einer Grafik (Beschriftung, Markierung). Auf dunklem Grund weiss, auf hellem dunkel. */
+.bzz-schild { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: var(--r); background: var(--bzz-weiss); color: var(--bzz-ink); font: 700 12px/1 var(--bzz-font); white-space: nowrap; }
+.bzz-schild--dunkel { background: var(--bzz-ink); color: #FFFFFF; }
+.bzz-schild--feld { background: var(--bzz-accent-flaeche); color: var(--bzz-on-accent); }
+
+/* ===== Tags ===== */
+/* Abteilungs-Tag: Farbe mit style="--tag: var(--bzz-kv)" – Farbe im Punkt, Schrift schwarz */
+.bzz-tag { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: var(--r); background: var(--bzz-nebel); color: var(--bzz-ink); font-size: 12px; line-height: 1; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bzz-tag::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--tag, var(--bzz-blau)); flex: none; }
+.bzz-tag--plain::before { display: none; }
+.bzz-tag--feld { background: var(--bzz-accent-soft); color: var(--bzz-accent-ink); }
+.bzz-tag--feld::before { background: var(--bzz-accent); }
+.bzz-tag--blau { background: var(--bzz-softblau); color: var(--bzz-blau-text); }
+.bzz-tag--blau::before { display: none; }
+.bzz-tag--frist { background: var(--bzz-signal); color: var(--bzz-ink); }
+.bzz-tag--frist::before { display: none; }
+
+/* ===== Hinweis – helle Fläche, ohne Rahmen ===== */
+.bzz-note { border-radius: var(--r); padding: 20px 24px; background: var(--bzz-softblau); color: var(--bzz-ink); font-size: 16px; }
+.bzz-note > :first-child { margin-top: 0; }
+.bzz-note > :last-child { margin-bottom: 0; }
+.bzz-note strong:first-child { display: block; }
+.bzz-note--warnung { background: var(--bzz-signal); }
+.bzz-note--erfolg { background: var(--bzz-mediamatik-soft); }
+.bzz-note--fehler { background: var(--bzz-kv-soft); }
+
+/* ===== Legende unter Diagrammen ===== */
+.bzz-legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: var(--s4); font-size: 15px; }
+.bzz-legend span { display: inline-flex; align-items: center; gap: 8px; }
+.bzz-legend i { width: 12px; height: 12px; border-radius: var(--r); display: inline-block; }
+
+/* ===== Farbstreifen – aus den Office-Vorlagen; auf Webseiten nur noch für Titelbilder von Dokumenten =====
+   <div class="bzz-stripes" aria-hidden="true"><i></i><i></i><i></i><i></i></div> – Reihenfolge fest, nie hinter Text */
+.bzz-stripes { display: grid; grid-template-columns: repeat(4, 1fr); overflow: hidden; }
+.bzz-stripes > i { display: block; background: linear-gradient(to bottom, #fff 0%, color-mix(in srgb, var(--c) 70%, #fff) 100%); }
+.bzz-stripes > i:nth-child(1) { --c: var(--bzz-informatik); }
+.bzz-stripes > i:nth-child(2) { --c: var(--bzz-kv); }
+.bzz-stripes > i:nth-child(3) { --c: var(--bzz-fabe); }
+.bzz-stripes > i:nth-child(4) { --c: var(--bzz-mediamatik); }
+.bzz-stripes--satt > i { background: linear-gradient(to bottom, #fff 0%, var(--c) 45%, var(--c) 100%); }
+.bzz-stripes--dreieck { clip-path: polygon(0 0, 100% 100%, 0 100%); }
+
+/* ===== Hilfsklassen ===== */
+.bzz-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.bzz-stack > * + * { margin-top: var(--s3); }
+.bzz-grid { display: grid; gap: var(--s2); grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }

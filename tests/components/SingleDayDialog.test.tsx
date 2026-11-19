@@ -188,7 +188,8 @@ describe('SingleDayDialog — closing', () => {
     const onClose = renderDialog(day);
     fireEvent.click(screen.getByText('Montag, 8. September 2025'));
     expect(onClose).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('dialog'));
+    // The backdrop wraps the dialog card.
+    fireEvent.click(screen.getByRole('dialog').parentElement!);
     expect(onClose).toHaveBeenCalledOnce();
   });
 });

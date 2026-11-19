@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import SchoolYearCalendar from '@/components/SchoolYearCalendar';
+import { HALF_DAY_COLORS, PARTIAL_CANCEL_STYLE } from '@/src/lib/calendar-styles';
 import type { CalendarDay } from '@/src/types';
 
 // ─── Fixture helpers ──────────────────────────────────────────────────────────
@@ -243,8 +244,9 @@ describe('SchoolYearCalendar — split day (halfDay)', () => {
     // The two half spans carry their status backgrounds (morning first).
     const halves = splitButton!.querySelectorAll('span[style]');
     expect(halves).toHaveLength(2);
-    expect(halves[0]).toHaveStyle({ background: '#d1fae5' }); // lessons → emerald-100
-    expect(halves[1]).toHaveStyle({ background: '#f8fafc' }); // none → slate-50
+    // (Raw attribute: jsdom's toHaveStyle can't compare var() values.)
+    expect(halves[0].getAttribute('style')).toContain(HALF_DAY_COLORS.lessons);
+    expect(halves[1].getAttribute('style')).toContain(HALF_DAY_COLORS.none); // same as a non-school day
   });
 
   it('cancelled half with reason: reason text renders on the cell, tooltip contains "fällt aus" and the reason', () => {
@@ -341,7 +343,7 @@ describe('SchoolYearCalendar — split day (halfDay)', () => {
 });
 
 describe('SchoolYearCalendar — detailsMode partial cancellations', () => {
-  it('applies bg-pink-200 to a normal day with cancelledCount > 0 only in detailsMode', () => {
+  it('applies the partial-cancel style to a normal day with cancelledCount > 0 only in detailsMode', () => {
     const partialDay: CalendarDay = mkDay('2025-09-08', {
       type: 'normal',
       lessonCount: 4,
@@ -360,12 +362,12 @@ describe('SchoolYearCalendar — detailsMode partial cancellations', () => {
       />,
     );
 
-    // Without detailsMode: day-cell button should NOT have bg-pink-200
+    // Without detailsMode: day-cell button should NOT have the partial-cancel fill
     const dayButton = findDayButtonByTitle('IA25a');
     expect(dayButton).toBeDefined();
-    expect(dayButton!.className).not.toContain('bg-pink-200');
+    expect(dayButton!.className).not.toContain(PARTIAL_CANCEL_STYLE.cell);
 
-    // With detailsMode: should now have bg-pink-200
+    // With detailsMode: should now have it
     rerender(
       <SchoolYearCalendar
         days={days}
@@ -378,7 +380,7 @@ describe('SchoolYearCalendar — detailsMode partial cancellations', () => {
 
     const dayButtonAfter = findDayButtonByTitle('IA25a');
     expect(dayButtonAfter).toBeDefined();
-    expect(dayButtonAfter!.className).toContain('bg-pink-200');
+    expect(dayButtonAfter!.className).toContain(PARTIAL_CANCEL_STYLE.cell);
   });
 });
 

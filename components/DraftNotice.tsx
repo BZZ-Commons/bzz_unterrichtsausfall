@@ -1,5 +1,3 @@
-import { AlertTriangle } from 'lucide-react';
-
 interface DraftNoticeProps {
   schoolYearName: string;
 }
@@ -10,15 +8,12 @@ interface DraftNoticeProps {
  */
 export default function DraftNotice({ schoolYearName }: DraftNoticeProps) {
   return (
-    <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3">
-      <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-      <div>
-        <p className="text-sm font-medium text-amber-800">Vorläufige Planung (Entwurf)</p>
-        <p className="text-sm text-amber-700 mt-0.5">
-          Die angezeigten Ausfälle für das Schuljahr {schoolYearName} sind noch nicht definitiv.
-          Änderungen sind weiterhin möglich.
-        </p>
-      </div>
+    <div className="bzz-note bzz-note--warnung mb-6">
+      <strong>Vorläufige Planung (Entwurf)</strong>
+      <p className="mt-1 mb-0">
+        Die angezeigten Ausfälle für das Schuljahr {schoolYearName} sind noch nicht definitiv.
+        Änderungen sind weiterhin möglich.
+      </p>
     </div>
   );
 }

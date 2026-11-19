@@ -111,14 +111,12 @@ export async function fetchSchoolYearSummaries(untis: WebUntis): Promise<SchoolY
   const raw = await withRateLimitRetry(() => untis.getSchoolyears(true));
   return raw
     .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
-    .map(
-      (y): SchoolYearSummary => ({
-        id: y.id,
-        name: y.name,
-        startDate: new Date(y.startDate).toISOString(),
-        endDate: new Date(y.endDate).toISOString(),
-      }),
-    );
+    .map((y): SchoolYearSummary => ({
+      id: y.id,
+      name: y.name,
+      startDate: new Date(y.startDate).toISOString(),
+      endDate: new Date(y.endDate).toISOString(),
+    }));
 }
 
 /** Quarter/semester boundaries for a school year (null → current year). */

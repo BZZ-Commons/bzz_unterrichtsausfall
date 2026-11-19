@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import {
   getClassCalendarCached,
   getClassesCached,
@@ -96,7 +96,7 @@ export function registerTools(server: McpServer): void {
         'Companion-Klassen (Klassen mit gemeinsamem Stundenplan, z. B. zugehörige BM-Klasse). ' +
         'Optional für ein bestimmtes Schuljahr via schoolyearId (Standard: aktuelles Schuljahr). ' +
         'Liefert pro Klasse: id, name, longName, companionNames, fetchIds.',
-      inputSchema: { schoolyearId: schoolyearIdParam },
+      inputSchema: z.object({ schoolyearId: schoolyearIdParam }),
     },
     async ({ schoolyearId }) => {
       try {
@@ -123,7 +123,7 @@ export function registerTools(server: McpServer): void {
       description:
         'Listet alle Schuljahre des BZZ (neueste zuerst) mit id, name, startDate und endDate. ' +
         'Die id kann in anderen Tools als schoolyearId verwendet werden.',
-      inputSchema: {},
+      inputSchema: z.object({}),
     },
     async () => {
       try {
@@ -141,7 +141,7 @@ export function registerTools(server: McpServer): void {
       description:
         'Liefert die Quartals- (Q1–Q4) und Semestergrenzen eines Schuljahres als ' +
         'Datumsbereiche (YYYY-MM-DD). Optional via schoolyearId (Standard: aktuelles Schuljahr).',
-      inputSchema: { schoolyearId: schoolyearIdParam },
+      inputSchema: z.object({ schoolyearId: schoolyearIdParam }),
     },
     async ({ schoolyearId }) => {
       try {
@@ -169,11 +169,11 @@ export function registerTools(server: McpServer): void {
         'Sprachaufenthalt, kann auch an Wochentagen ohne regulären Unterricht liegen. ' +
         'Jeder Tag enthält den korrekten Wochentag im Feld weekday — diesen verwenden, ' +
         'nicht selbst aus dem Datum berechnen.',
-      inputSchema: {
+      inputSchema: z.object({
         ...classQueryShape,
         from: isoDate.optional().describe('Zeitraum-Beginn (YYYY-MM-DD), inklusiv'),
         to: isoDate.optional().describe('Zeitraum-Ende (YYYY-MM-DD), inklusiv'),
-      },
+      }),
     },
     async ({ className, classId, schoolyearId, variant, from, to }) => {
       try {
@@ -210,7 +210,7 @@ export function registerTools(server: McpServer): void {
         'auch an Wochentagen ohne regulären Unterricht liegen). Jeder Tag enthält den ' +
         'korrekten Wochentag im Feld weekday — diesen verwenden, nicht selbst aus dem Datum ' +
         'berechnen.',
-      inputSchema: classQueryShape,
+      inputSchema: z.object(classQueryShape),
     },
     async ({ className, classId, schoolyearId, variant }) => {
       try {

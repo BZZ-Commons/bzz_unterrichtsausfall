@@ -52,11 +52,9 @@ export function groupClassesByPlan(classes: ReadonlyArray<UntisClass>): PlanGrou
   }
 
   return Array.from(membersByLead.values())
-    .map(
-      (members): PlanGroup => ({
-        representative: highestPriority(members),
-        memberIds: members.map((m) => m.id),
-      }),
-    )
+    .map((members): PlanGroup => ({
+      representative: highestPriority(members),
+      memberIds: members.map((m) => m.id),
+    }))
     .sort((a, b) => compareClassPriority(a.representative, b.representative));
 }

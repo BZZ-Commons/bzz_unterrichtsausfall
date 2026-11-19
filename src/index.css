@@ -1,1 +1,69 @@
 @import 'tailwindcss';
+
+/*
+ * BZZ Design System (Kopie von bzz.eifach.online/design, siehe Dateikopf).
+ * Liegt im Layer `components`: Sein :where()-Grundstil schlägt so Tailwinds Preflight
+ * (Layer `base`), Tailwind-Utilities (Layer `utilities`) gewinnen weiterhin dagegen.
+ */
+@import './styles/bzz-design.css' layer(components);
+
+/* Tailwinds Preflight nimmt Links die Unterstreichung; design.css setzt nur Dicke und
+   Abstand und verlässt sich auf den Browser-Standard. Darum hier wieder einschalten. */
+@layer components {
+  :where(a) {
+    text-decoration-line: underline;
+  }
+}
+
+/*
+ * Kalenderfarben – aus den BZZ-Farben abgeleitet: helle Flächen, Text bleibt dunkel
+ * (--bzz-ink-2). Sie unterscheiden Tagesarten, nicht Abteilungen; die Legende benennt sie.
+ */
+:root {
+  --cal-unterricht: color-mix(in srgb, var(--bzz-mediamatik) 22%, #fff);
+  --cal-ausfall: color-mix(in srgb, var(--bzz-fabe) 45%, #fff);
+  --cal-teilausfall: color-mix(in srgb, var(--bzz-kv) 25%, #fff);
+  --cal-veranstaltung: color-mix(in srgb, var(--bzz-blau) 28%, #fff);
+  --cal-ferien: color-mix(in srgb, var(--bzz-informatik) 30%, #fff);
+  --cal-frei: var(--bzz-grau);
+}
+
+/* BZZ-Tokens als Tailwind-Utilities: bg-bzz-grau, text-bzz-muted, rounded-bzz, bg-cal-ausfall … */
+@theme inline {
+  --font-sans: var(--bzz-font);
+  --font-mono: var(--bzz-mono);
+
+  --radius-bzz: var(--r);
+
+  --color-bzz-blau: var(--bzz-blau);
+  --color-bzz-blau-flaeche: var(--bzz-blau-flaeche);
+  --color-bzz-blau-text: var(--bzz-blau-text);
+  --color-bzz-blau-dunkel: var(--bzz-blau-dunkel);
+  --color-bzz-dunkelblau: var(--bzz-dunkelblau);
+  --color-bzz-softblau: var(--bzz-softblau);
+
+  --color-bzz-fabe: var(--bzz-fabe);
+  --color-bzz-fabe-ink: var(--bzz-fabe-ink);
+  --color-bzz-mediamatik: var(--bzz-mediamatik);
+  --color-bzz-kv-ink: var(--bzz-kv-ink);
+
+  --color-bzz-signal: var(--bzz-signal);
+  --color-bzz-rot: var(--bzz-rot);
+  --color-bzz-gruen: var(--bzz-gruen);
+
+  --color-bzz-ink: var(--bzz-ink);
+  --color-bzz-ink-2: var(--bzz-ink-2);
+  --color-bzz-muted: var(--bzz-muted);
+  --color-bzz-line-stark: var(--bzz-line-stark);
+  --color-bzz-line: var(--bzz-line);
+  --color-bzz-nebel: var(--bzz-nebel);
+  --color-bzz-grau: var(--bzz-grau);
+  --color-bzz-weiss: var(--bzz-weiss);
+
+  --color-cal-unterricht: var(--cal-unterricht);
+  --color-cal-ausfall: var(--cal-ausfall);
+  --color-cal-teilausfall: var(--cal-teilausfall);
+  --color-cal-veranstaltung: var(--cal-veranstaltung);
+  --color-cal-ferien: var(--cal-ferien);
+  --color-cal-frei: var(--cal-frei);
+}

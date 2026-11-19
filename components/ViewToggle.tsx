@@ -9,36 +9,34 @@ interface ViewToggleProps {
   onChange: (value: ViewMode) => void;
 }
 
+const LABEL_ID = 'view-toggle-label';
+
 const OPTIONS: Array<{ value: ViewMode; label: string; Icon: typeof User }> = [
   { value: 'single', label: 'Einzelne Klasse', Icon: User },
   { value: 'all', label: 'Alle Klassen', Icon: Users },
 ];
 
+/** BZZ segment (button group); the chosen view carries aria-pressed. */
 export default function ViewToggle({ value, onChange }: ViewToggleProps) {
   return (
-    <div
-      role="tablist"
-      aria-label="Ansicht wählen"
-      className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
-    >
-      {OPTIONS.map(({ value: v, label, Icon }) => {
-        const active = v === value;
-        return (
+    <div>
+      <span id={LABEL_ID} className="bzz-field-label">
+        Ansicht
+      </span>
+      <div role="group" aria-labelledby={LABEL_ID} className="bzz-segment">
+        {OPTIONS.map(({ value: v, label, Icon }) => (
           <button
             key={v}
-            role="tab"
             type="button"
-            aria-selected={active}
+            aria-pressed={v === value}
             onClick={() => onChange(v)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              active ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
-            }`}
+            className="bzz-btn px-4"
           >
-            <Icon className="w-4 h-4" aria-hidden="true" />
+            <Icon className="h-4 w-4" aria-hidden="true" />
             <span>{label}</span>
           </button>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }

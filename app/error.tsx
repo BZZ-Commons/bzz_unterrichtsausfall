@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
-import { AlertCircle, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
+import SiteHeader from '@/components/SiteHeader';
 
 interface ErrorPageProps {
   error: Error & { digest?: string };
@@ -14,29 +15,25 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100 flex items-center justify-center p-4">
-      <div className="max-w-lg w-full p-6 bg-red-50 border border-red-200 rounded-2xl shadow-sm">
-        <div className="flex gap-3">
-          <AlertCircle className="w-6 h-6 text-red-500 shrink-0 mt-0.5" aria-hidden="true" />
-          <div className="min-w-0">
-            <h1 className="text-base font-semibold text-red-800">Etwas ist schiefgelaufen</h1>
-            <p className="text-sm text-red-600 mt-1">
-              Die Seite konnte nicht angezeigt werden. Bitte versuchen Sie es erneut.
+    <>
+      <SiteHeader />
+      <main className="bzz-container pt-10">
+        <div role="alert" className="bzz-note bzz-note--fehler max-w-xl">
+          <h1 className="m-0 text-[22px] leading-tight">Etwas ist schiefgelaufen</h1>
+          <p className="mt-2 mb-0">
+            Die Seite konnte nicht angezeigt werden. Bitte versuchen Sie es erneut.
+          </p>
+          {error.message && (
+            <p className="mt-2 mb-0 font-mono text-[13px] break-words text-bzz-kv-ink">
+              {error.message}
             </p>
-            {error.message && (
-              <p className="text-xs text-red-500/80 mt-2 break-words font-mono">{error.message}</p>
-            )}
-            <button
-              type="button"
-              onClick={reset}
-              className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-            >
-              <RotateCcw className="w-4 h-4" aria-hidden="true" />
-              Erneut versuchen
-            </button>
-          </div>
+          )}
+          <button type="button" onClick={reset} className="bzz-btn bzz-btn--dunkel mt-4">
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            Erneut versuchen
+          </button>
         </div>
-      </div>
-    </div>
+      </main>
+    </>
   );
 }

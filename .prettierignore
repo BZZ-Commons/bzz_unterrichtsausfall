@@ -7,3 +7,6 @@ tsconfig.tsbuildinfo
 # generated / binary-ish
 package-lock.json
 public/
+
+# vendored BZZ design system (keep byte-identical to upstream)
+src/styles/bzz-design.css

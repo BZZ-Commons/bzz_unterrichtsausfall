@@ -2,10 +2,18 @@
 
 import { memo, useMemo } from 'react';
 import { buildDayTooltip, halfStatusLabel } from '@/src/lib/calendar';
-import { buildMonthGroups, DOW_LABELS } from '@/src/lib/calendar-layout';
+import { buildMonthGroups } from '@/src/lib/calendar-layout';
 import { untisWeekHref } from '@/src/lib/untisLinks';
 import { DAY_STYLES, PARTIAL_CANCEL_STYLE, HALF_DAY_COLORS } from '@/src/lib/calendar-styles';
 import { PeriodDivider, buildDividerMap } from '@/components/PeriodDivider';
+import {
+  DAYS_GRID_CLASS,
+  EmptyCalendar,
+  MonthHeading,
+  SchoolYearFootnote,
+  WEEK_ROW_CLASS,
+  WeekdayHeader,
+} from '@/components/CalendarGridParts';
 import type { CalendarDay, DayHalf, SchoolPeriod } from '@/src/types';
 
 // ─── Day cell ─────────────────────────────────────────────────────────────────
@@ -20,8 +28,6 @@ interface DayCellProps {
   onSelect?: (day: CalendarDay, monday: string) => void;
 }
 
-const FOCUS_RING_CLASS = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400';
-
 const DayCell = memo(function DayCell({
   day,
   monday,
@@ -30,7 +36,7 @@ const DayCell = memo(function DayCell({
   onSelect,
 }: DayCellProps) {
   if (!day) {
-    return <div className="h-9 w-full rounded-lg bg-white" />;
+    return <div className="h-9 w-full" />;
   }
 
   const dayNum = day.date.slice(8); // last 2 chars = day number
@@ -56,8 +62,8 @@ const DayCell = memo(function DayCell({
     // Exactly one half cancelled → its reason sits centred on that half (full text in the dialog).
     const onlyOneCancelled =
       (morning.status === 'cancelled') !== (afternoon.status === 'cancelled');
-    // A fully-cancelled day (both halves orange) gets orange text + a combined reason under the number.
-    const overlayText = bothCancelled ? DAY_STYLES.unterrichtsausfall.text : 'text-slate-700';
+    // A fully-cancelled day (both halves cancelled) gets the cancellation text colour + a combined reason under the number.
+    const overlayText = bothCancelled ? DAY_STYLES.unterrichtsausfall.text : 'text-bzz-ink-2';
     const combinedReason = bothCancelled
       ? morning.reason && afternoon.reason && morning.reason !== afternoon.reason
         ? `${morning.reason} / ${afternoon.reason}`
@@ -66,8 +72,8 @@ const DayCell = memo(function DayCell({
     const renderHalf = (h: DayHalf) => (
       <span className="relative flex-1" style={{ background: HALF_DAY_COLORS[h.status] }}>
         {onlyOneCancelled && h.reason && (
-          <span className="absolute inset-0 flex items-center justify-center px-0.5 text-orange-800">
-            <span className="text-[8px] font-medium leading-tight text-center w-full truncate">
+          <span className="absolute inset-0 flex items-center justify-center px-0.5 text-bzz-ink">
+            <span className="w-full truncate text-center text-[8px] leading-tight font-medium">
               {h.reason}
             </span>
           </span>
@@ -80,17 +86,17 @@ const DayCell = memo(function DayCell({
         onClick={select}
         title={cellTip}
         aria-label={cellTip}
-        className={`relative w-full rounded-lg overflow-hidden flex min-h-9 select-none cursor-pointer transition-opacity hover:opacity-70 ${FOCUS_RING_CLASS}`}
+        className="relative flex min-h-9 w-full cursor-pointer overflow-hidden rounded-bzz select-none transition-opacity hover:opacity-70"
       >
         {renderHalf(morning)}
-        <span className="w-px shrink-0 bg-slate-400/60" aria-hidden="true" />
+        <span className="w-px shrink-0 bg-bzz-weiss" aria-hidden="true" />
         {renderHalf(afternoon)}
         <span
           className={`absolute inset-0 flex flex-col items-center justify-center px-0.5 pointer-events-none ${overlayText}`}
         >
-          <span className="text-xs font-medium leading-none">{dayNum}</span>
+          <span className="text-xs leading-none font-semibold tabular-nums">{dayNum}</span>
           {combinedReason && (
-            <span className="mt-0.5 text-[8px] font-normal leading-tight text-center w-full truncate">
+            <span className="mt-0.5 w-full truncate text-center text-[8px] leading-tight font-normal">
               {combinedReason}
             </span>
           )}
@@ -103,9 +109,9 @@ const DayCell = memo(function DayCell({
   const style = isPartialCancel ? PARTIAL_CANCEL_STYLE : DAY_STYLES[day.type];
 
   const baseClass = `
-    w-full rounded-lg flex flex-col items-center justify-center
+    w-full rounded-bzz flex flex-col items-center justify-center
     min-h-9 px-0.5 py-1
-    text-xs font-medium select-none transition-opacity hover:opacity-70
+    text-xs font-semibold tabular-nums select-none transition-opacity hover:opacity-70
     ${style.cell} ${style.text}
   `;
 
@@ -121,11 +127,11 @@ const DayCell = memo(function DayCell({
       type="button"
       onClick={select}
       title={tooltip}
-      className={`${baseClass} cursor-pointer ${FOCUS_RING_CLASS}`}
+      className={`${baseClass} cursor-pointer`}
     >
       <span>{dayNum}</span>
       {(day.holidayName || day.type === 'unterrichtsausfall' || day.type === 'veranstaltung') && (
-        <span className="text-[9px] font-normal leading-tight text-center w-full truncate">
+        <span className="w-full truncate text-center text-[9px] leading-tight font-normal">
           {day.holidayName ?? day.eventName ?? 'kein Unterricht'}
         </span>
       )}
@@ -166,38 +172,16 @@ export default function SchoolYearCalendar({
   );
 
   if (monthGroups.length === 0) {
-    return (
-      <p className="text-sm text-slate-500 text-center py-12">Keine Kalenderdaten verfügbar.</p>
-    );
+    return <EmptyCalendar />;
   }
 
   return (
     <div className="space-y-8">
-      {/* Week number + day-of-week header — shown once, sticky.
-          `--sticky-stack-top` is set by the page so this stacks below the
-          sticky card header (title + legend) instead of overlapping it. */}
-      <div
-        className="sticky z-10 bg-white/90 backdrop-blur-sm py-2 border-b border-slate-100"
-        style={{ top: 'var(--sticky-stack-top, 0px)' }}
-      >
-        <div className="grid grid-cols-[3rem_1fr] gap-2">
-          <div className="text-xs text-slate-400 text-right pr-1 pt-1">KW</div>
-          <div className="grid grid-cols-7 gap-1">
-            {DOW_LABELS.map((d) => (
-              <div key={d} className="text-xs font-medium text-slate-400 text-center">
-                {d}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <WeekdayHeader />
 
       {monthGroups.map((group) => (
         <section key={`${group.year}-${group.month}`}>
-          {/* Month label */}
-          <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2">
-            {group.label}
-          </h2>
+          <MonthHeading label={group.label} />
 
           <div className="space-y-1">
             {group.weeks.map((week) => {
@@ -211,18 +195,18 @@ export default function SchoolYearCalendar({
                       semester={divider.semester}
                     />
                   )}
-                  <div className="grid grid-cols-[3rem_1fr] gap-2 items-center">
+                  <div className={WEEK_ROW_CLASS}>
                     {/* ISO week number — also links to that week */}
                     <a
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-slate-400 text-right pr-1 tabular-nums hover:text-indigo-500 transition-colors"
+                      className="pr-1 text-right text-xs text-bzz-muted tabular-nums no-underline transition-colors hover:text-bzz-blau-text hover:underline"
                     >
                       {week.isoWeek}
                     </a>
                     {/* 7 day cells */}
-                    <div className="grid grid-cols-7 gap-1">
+                    <div className={DAYS_GRID_CLASS}>
                       {week.days.map((day, i) => (
                         <DayCell
                           key={day?.date ?? `empty-${week.isoWeek}-${i}`}
@@ -242,7 +226,7 @@ export default function SchoolYearCalendar({
         </section>
       ))}
 
-      <p className="text-xs text-slate-400 text-center pt-2">Schuljahr {schoolYearName}</p>
+      <SchoolYearFootnote name={schoolYearName} />
     </div>
   );
 }

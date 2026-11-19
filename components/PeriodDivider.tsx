@@ -23,23 +23,14 @@ export function buildDividerMap(periods: SchoolPeriod[]): Map<string, DividerInf
 
 export function PeriodDivider({ quarter, semester }: DividerInfo) {
   const label = semester ? (quarter ? `${quarter} · ${semester}` : semester) : quarter;
+  // Semester boundaries stand out (blue line + blue tag); quarters stay quiet.
   const s = semester
-    ? {
-        wrap: 'py-2 my-1',
-        line: 'h-0.5 bg-violet-300',
-        badge: 'font-bold text-violet-700 px-3 bg-violet-50 border-violet-300',
-      }
-    : {
-        wrap: 'py-1 my-0.5',
-        line: 'h-px bg-indigo-200',
-        badge: 'font-semibold text-indigo-600 px-2 bg-indigo-50 border-indigo-200',
-      };
+    ? { wrap: 'py-2 my-1', line: 'h-0.5 bg-bzz-blau', tag: 'bzz-tag bzz-tag--blau' }
+    : { wrap: 'py-1 my-0.5', line: 'h-px bg-bzz-line', tag: 'bzz-tag bzz-tag--plain' };
   return (
     <div className={`flex items-center gap-2 ${s.wrap}`}>
       <div className={`flex-1 ${s.line}`} />
-      <span className={`text-xs py-0.5 rounded-full border whitespace-nowrap ${s.badge}`}>
-        {label}
-      </span>
+      <span className={s.tag}>{label}</span>
       <div className={`flex-1 ${s.line}`} />
     </div>
   );

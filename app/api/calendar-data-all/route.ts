@@ -65,10 +65,8 @@ export const GET = withRateLimit(async (request: Request): Promise<NextResponse>
         // WebUntis rate-limits aggressive concurrency (ECONNRESET / 429).
         // 4 concurrent fetches, each with its own retry-on-429 (in fetchClassTimetable),
         // keeps us safely under the limit.
-        const lessonsPerId = await mapWithConcurrency(
-          uniqueIds,
-          4,
-          (id): Promise<UntisLesson[]> => fetchClassTimetable(untis, schoolYear, id),
+        const lessonsPerId = await mapWithConcurrency(uniqueIds, 4, (id): Promise<UntisLesson[]> =>
+          fetchClassTimetable(untis, schoolYear, id),
         );
 
         // Map: classId → lessons[]

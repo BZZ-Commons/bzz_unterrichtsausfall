@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.3.0",
+    "date": "2026-11-19",
+    "changes": [
+      "Neues Erscheinungsbild nach dem BZZ Design System: weisse Kopfzeile mit BZZ-Logo, blauer Seitenkopf, Schrift Inter, eckige Karten und Knöpfe. Die Kalenderfarben sind an die BZZ-Farben angepasst, die Bedeutung bleibt gleich (grün Unterricht, orange Ausfall, violett Ferien, blau Veranstaltung).",
+      "Ansicht, Schuljahr und Klasse sind jetzt beschriftet und stehen gemeinsam über dem Kalender. Auf Handy und Tablet bleibt beim Scrollen nur noch die Wochentagszeile oben stehen, damit mehr Platz für den Kalender bleibt.",
+      "Technische Aktualisierung: Next.js 16, Node.js 26 und alle weiteren Bibliotheken auf dem neusten Stand; alle bekannten Sicherheitslücken der Abhängigkeiten sind behoben."
+    ]
+  },
+  {
     "version": "1.2.11",
     "date": "2026-08-06",
     "changes": [

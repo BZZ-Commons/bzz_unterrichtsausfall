@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Loader2, CalendarDays } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import ClassSelector from '@/components/ClassSelector';
 import SchoolYearCalendar from '@/components/SchoolYearCalendar';
 import SchoolYearSelector from '@/components/SchoolYearSelector';
@@ -14,6 +14,7 @@ import SingleDayDialog from '@/components/SingleDayDialog';
 import ErrorNotice from '@/components/ErrorNotice';
 import ExportButton from '@/components/ExportButton';
 import DraftNotice from '@/components/DraftNotice';
+import SiteHeader from '@/components/SiteHeader';
 import { isIAClass, isMEClass, isIMClass, getIAVariants } from '@/src/lib/classGroups';
 import {
   schoolYearShort,
@@ -24,6 +25,7 @@ import {
 } from '@/src/lib/schoolYear';
 import { writeLastSelection } from '@/src/lib/lastSelection';
 import { useMeasuredHeight } from '@/src/lib/useMeasuredHeight';
+import { useNow } from '@/src/lib/useNow';
 import { useYearData } from '@/src/lib/useYearData';
 import { useCalendarData } from '@/src/lib/useCalendarData';
 import { useAggregatedData } from '@/src/lib/useAggregatedData';
@@ -32,9 +34,10 @@ import { useUrlSync } from '@/src/lib/useUrlSync';
 import type { AggregatedDay, CalendarDay, UntisClass } from '@/src/types';
 
 // Card header (title + actions + legend) — pinned on scroll above the calendar's
-// own sticky weekday row. Shared verbatim by the single- and aggregated-view cards.
+// own sticky weekday row from `lg` up (on phones it would eat half the screen, so
+// there only the weekday row sticks). Shared by the single- and aggregated-view cards.
 const STICKY_CARD_HEADER_CLASS =
-  'sticky top-0 z-20 bg-white flex flex-col sm:flex-row sm:items-center gap-3 mb-6 pb-4 border-b border-slate-100';
+  'lg:sticky lg:top-0 z-20 -mx-5 sm:-mx-8 px-5 sm:px-8 pt-4 -mt-4 pb-4 mb-4 bg-bzz-weiss flex flex-col lg:flex-row lg:items-start gap-3';
 
 export default function HomePage() {
   const [viewMode, setViewMode] = useState<ViewMode>('single');
@@ -134,12 +137,16 @@ export default function HomePage() {
     setSelectedSingleDay(null);
   }, [abortCalendar, abortAggregated, resetCalendar, resetAggregated]);
 
-  // Publish the live back-edges for `useYearData` to call through the ref.
-  wiringRef.current = {
-    captureUrlParams,
-    onYearSwitch: handleYearSwitch,
-    loadAggregated,
-  };
+  // Publish the live back-edges for `useYearData` to call through the ref. They
+  // are only ever called from effects and event handlers, and layout effects run
+  // before any passive effect — so the ref is set before its first use.
+  useLayoutEffect(() => {
+    wiringRef.current = {
+      captureUrlParams,
+      onYearSwitch: handleYearSwitch,
+      loadAggregated,
+    };
+  });
 
   const handleIAVariantPick = useCallback(
     (companion: UntisClass) => {
@@ -181,27 +188,29 @@ export default function HomePage() {
     [selectedSchoolYear],
   );
 
-  // Logo/title "home" link → the current school year's overview (drops class/view).
+  // The date-dependent bits below follow `now`, which refreshes hourly and when the
+  // tab becomes visible again (a page left open across a year boundary stays right).
+  const now = useNow();
+
+  // Logo "home" link → the current school year's overview (drops class/view).
   // Falls back to `/` until the year list has loaded.
   const homeHref = useMemo(() => {
-    const current = findDefaultSchoolYear(schoolYears, Date.now());
+    const current = findDefaultSchoolYear(schoolYears, now);
     return current ? `/?schoolyear=${schoolYearShort(current)}` : '/';
-  }, [schoolYears]);
+  }, [schoolYears, now]);
 
   // The next school year's plan is published early as a draft — warn that the
   // shown cancellations may still change (until the end of the current year).
-  // Computed inline rather than memoized so it reflects the current date.
-  const showDraftNotice = isDraftSchoolYear(selectedSchoolYear, schoolYears, Date.now());
+  const showDraftNotice = isDraftSchoolYear(selectedSchoolYear, schoolYears, now);
 
   // The day-timetable preview is gated until the selected school year has actually
   // begun (next year's plan is only a draft) — except on the dev server. Shared
   // with the API route's server-side gate via isPreviewGateOpen.
-  const previewAllowed = isPreviewGateOpen(selectedSchoolYear, Date.now());
+  const previewAllowed = isPreviewGateOpen(selectedSchoolYear, now);
 
   // Abgeschlossene Schuljahre verschwinden aus dem Dropdown; die volle Liste bleibt
   // erhalten (isDraftSchoolYear braucht das Vorjahr, Deep-Links dessen Kurzform).
-  // Wie oben inline statt memoized, damit es dem aktuellen Datum folgt.
-  const dropdownSchoolYears = selectableSchoolYears(schoolYears, Date.now(), selectedSchoolYearId);
+  const dropdownSchoolYears = selectableSchoolYears(schoolYears, now, selectedSchoolYearId);
 
   // Only surface a companion in the header for single-companion merges (length 2).
   // Multi-companion classes (e.g. AB c → IA a+b) fall back to longName.
@@ -260,60 +269,49 @@ export default function HomePage() {
   const showAggregatedError = viewMode === 'all' && aggregatedError && !aggregatedLoading;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100">
-      <header className="bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-5 flex flex-col sm:flex-row sm:items-center gap-4">
-          <a
-            href={homeHref}
-            title="Zur aktuellen Schuljahresübersicht"
-            className="flex items-center gap-3 transition-opacity hover:opacity-80"
-          >
-            <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-              <CalendarDays className="w-5 h-5 text-indigo-600" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 leading-tight">
-                Unterrichtsausfälle
-              </h1>
-              <p className="text-xs text-slate-500">BZZ Bildungszentrum Zürichsee</p>
-            </div>
-          </a>
+    <>
+      <SiteHeader homeHref={homeHref} />
 
-          {dropdownSchoolYears.length >= 2 && (
-            <div className="sm:ml-auto">
-              <SchoolYearSelector
-                schoolYears={dropdownSchoolYears}
-                selectedId={selectedSchoolYearId}
-                onChange={handleSchoolYearChange}
-              />
-            </div>
-          )}
+      <div className="bzz-kopf">
+        <div className="bzz-container">
+          <p className="bzz-label">
+            {selectedSchoolYear ? `Schuljahr ${selectedSchoolYear.name}` : 'Schuljahreskalender'}
+          </p>
+          <h1>Unterrichtsausfälle</h1>
+          <p className="bzz-lead">
+            Ausfälle, Veranstaltungen und Ferien pro Klasse – direkt aus WebUntis.
+          </p>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-6 flex flex-col sm:flex-row items-center gap-3">
+      <main className="bzz-container pt-10">
+        <div className="mb-8 flex flex-wrap items-end gap-x-6 gap-y-4">
           <ViewToggle value={viewMode} onChange={handleViewModeChange} />
+          {dropdownSchoolYears.length >= 2 && (
+            <SchoolYearSelector
+              schoolYears={dropdownSchoolYears}
+              selectedId={selectedSchoolYearId}
+              onChange={handleSchoolYearChange}
+            />
+          )}
           {viewMode === 'single' &&
             (classesError ? (
-              <p className="sm:ml-auto text-sm text-red-600 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                {classesError}
+              <div role="alert" className="bzz-note bzz-note--fehler py-3">
+                {classesError}{' '}
                 <button
                   type="button"
                   onClick={reloadYearData}
-                  className="font-medium underline hover:text-red-700 transition-colors"
+                  className="cursor-pointer font-bold underline underline-offset-4"
                 >
                   Erneut versuchen
                 </button>
-              </p>
+              </div>
             ) : (
               <ClassSelector
                 classes={classes}
                 selectedId={selectedClassId}
                 onChange={handleClassChange}
                 loading={classesLoading}
-                className="sm:ml-auto"
               />
             ))}
         </div>
@@ -323,12 +321,9 @@ export default function HomePage() {
         )}
 
         {showSingleEmptyState && (
-          <div className="text-center py-24">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center mx-auto mb-4">
-              <CalendarDays className="w-8 h-8 text-indigo-400" />
-            </div>
-            <h2 className="text-lg font-semibold text-slate-700 mb-1">Klasse auswählen</h2>
-            <p className="text-sm text-slate-500 max-w-sm mx-auto">
+          <div className="bzz-card">
+            <h2>Klasse wählen</h2>
+            <p className="bzz-lead mb-0">
               Wählen Sie oben eine Klasse aus, um den Schuljahreskalender mit allen Ausfällen
               anzuzeigen.
             </p>
@@ -336,9 +331,9 @@ export default function HomePage() {
         )}
 
         {(showSingleLoading || showAggregatedLoading) && (
-          <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-            <p className="text-sm text-slate-500">
+          <div className="flex flex-col items-center justify-center gap-3 py-24">
+            <Loader2 className="h-8 w-8 animate-spin text-bzz-blau-text" aria-hidden="true" />
+            <p className="bzz-muted m-0">
               {viewMode === 'all'
                 ? 'Lade Stundenpläne aller Klassen — das kann einen Moment dauern …'
                 : 'Lade Stundenplan für das gesamte Schuljahr …'}
@@ -358,45 +353,44 @@ export default function HomePage() {
         )}
 
         {showSingleCalendar && calendarData && selectedClassId != null && (
-          <div
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6"
-            style={stickyStackStyle}
-          >
+          <div className="bzz-card" style={stickyStackStyle}>
             <div ref={stickyHeaderRef} className={STICKY_CARD_HEADER_CLASS}>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
+              <div className="min-w-0">
+                <h2 className="mb-1">
                   {selectedClass?.name}
                   {subtitle && (
-                    <span className="ml-2 text-sm font-normal text-slate-500">{subtitle}</span>
+                    <span className="ml-3 text-lg font-normal tracking-normal text-bzz-muted">
+                      {subtitle}
+                    </span>
                   )}
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Schuljahr {calendarData.schoolYear.name}
-                </p>
+                <p className="bzz-muted m-0">Schuljahr {calendarData.schoolYear.name}</p>
               </div>
-              <div className="sm:ml-auto flex flex-wrap items-center gap-3">
-                {/* Reload indicator while another class's data is fetched (the
-                    previous calendar stays visible, dimmed, below). */}
-                {calendarLoading && (
-                  <Loader2
-                    className="w-4 h-4 text-indigo-400 animate-spin"
-                    aria-label="Lade Stundenplan …"
+              <div className="flex flex-col gap-3 lg:ml-auto lg:items-end">
+                <div className="flex items-center gap-3">
+                  {/* Reload indicator while another class's data is fetched (the
+                      previous calendar stays visible, dimmed, below). */}
+                  {calendarLoading && (
+                    <Loader2
+                      className="h-4 w-4 animate-spin text-bzz-blau-text"
+                      aria-label="Lade Stundenplan …"
+                    />
+                  )}
+                  {/* Details mode has no UI toggle — it is controlled only via the
+                      `?details=true` URL parameter (see useDeepLink / useUrlSync). */}
+                  <ExportButton
+                    days={calendarData.days}
+                    className={selectedClass?.name ?? ''}
+                    schoolYearName={calendarData.schoolYear.name}
+                    detailsMode={detailsMode}
                   />
-                )}
-                {/* Details mode has no UI toggle — it is controlled only via the
-                    `?details=true` URL parameter (see useDeepLink / useUrlSync). */}
-                <ExportButton
-                  days={calendarData.days}
-                  className={selectedClass?.name ?? ''}
-                  schoolYearName={calendarData.schoolYear.name}
-                  detailsMode={detailsMode}
-                />
+                </div>
                 <CalendarLegend variant="single" detailsMode={detailsMode} />
               </div>
             </div>
 
             <div
-              className={`transition-opacity ${calendarLoading ? 'opacity-50 pointer-events-none' : ''}`}
+              className={`transition-opacity ${calendarLoading ? 'pointer-events-none opacity-50' : ''}`}
               aria-busy={calendarLoading}
             >
               <SchoolYearCalendar
@@ -418,20 +412,15 @@ export default function HomePage() {
         )}
 
         {showAggregatedCalendar && aggregatedData && (
-          <div
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6"
-            style={stickyStackStyle}
-          >
+          <div className="bzz-card" style={stickyStackStyle}>
             <div ref={stickyHeaderRef} className={STICKY_CARD_HEADER_CLASS}>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Alle Klassen — Gesamtübersicht
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Schuljahr {aggregatedData.schoolYear.name}
+              <div className="min-w-0">
+                <h2 className="mb-1">Alle Klassen</h2>
+                <p className="bzz-muted m-0">
+                  Gesamtübersicht · Schuljahr {aggregatedData.schoolYear.name}
                 </p>
               </div>
-              <div className="sm:ml-auto">
+              <div className="lg:ml-auto">
                 <CalendarLegend variant="aggregated" />
               </div>
             </div>
@@ -475,6 +464,6 @@ export default function HomePage() {
           onClose={() => setSelectedSingleDay(null)}
         />
       )}
-    </div>
+    </>
   );
 }

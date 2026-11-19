@@ -1,9 +1,17 @@
 'use client';
 
 import { memo, useMemo } from 'react';
-import { buildMonthGroups, DOW_LABELS } from '@/src/lib/calendar-layout';
+import { buildMonthGroups } from '@/src/lib/calendar-layout';
 import { AGGREGATED_DAY_STYLES } from '@/src/lib/calendar-styles';
 import { PeriodDivider, buildDividerMap } from '@/components/PeriodDivider';
+import {
+  DAYS_GRID_CLASS,
+  EmptyCalendar,
+  MonthHeading,
+  SchoolYearFootnote,
+  WEEK_ROW_CLASS,
+  WeekdayHeader,
+} from '@/components/CalendarGridParts';
 import type { AggregatedDay, SchoolPeriod } from '@/src/types';
 
 function buildTooltip(day: AggregatedDay): string | undefined {
@@ -25,7 +33,7 @@ interface DayCellProps {
 
 const DayCell = memo(function DayCell({ day, onSelect }: DayCellProps) {
   if (!day) {
-    return <div className="h-9 w-full rounded-lg bg-white" />;
+    return <div className="h-9 w-full" />;
   }
 
   const style = AGGREGATED_DAY_STYLES[day.type];
@@ -33,9 +41,9 @@ const DayCell = memo(function DayCell({ day, onSelect }: DayCellProps) {
   const tooltip = buildTooltip(day);
 
   const baseClass = `
-    w-full rounded-lg flex flex-col items-center justify-center
+    w-full rounded-bzz flex flex-col items-center justify-center
     min-h-9 px-0.5 py-1
-    text-xs font-medium select-none transition-opacity
+    text-xs font-semibold tabular-nums select-none transition-opacity
     ${style.cell} ${style.text}
   `;
 
@@ -50,10 +58,10 @@ const DayCell = memo(function DayCell({ day, onSelect }: DayCellProps) {
         type="button"
         onClick={() => onSelect?.(day)}
         title={tooltip}
-        className={`${baseClass} cursor-pointer hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400`}
+        className={`${baseClass} cursor-pointer hover:opacity-70`}
       >
         <span>{dayNum}</span>
-        <span className="text-[9px] font-normal leading-tight">
+        <span className="text-[9px] leading-tight font-normal">
           {count} {count === 1 ? 'Klasse' : 'Klassen'}
         </span>
       </button>
@@ -64,7 +72,7 @@ const DayCell = memo(function DayCell({ day, onSelect }: DayCellProps) {
     <div className={baseClass} title={tooltip}>
       <span>{dayNum}</span>
       {day.holidayName && (
-        <span className="text-[9px] font-normal leading-tight text-center w-full truncate">
+        <span className="w-full truncate text-center text-[9px] leading-tight font-normal">
           {day.holidayName}
         </span>
       )}
@@ -94,36 +102,16 @@ export default function AggregatedCalendar({
   );
 
   if (monthGroups.length === 0) {
-    return (
-      <p className="text-sm text-slate-500 text-center py-12">Keine Kalenderdaten verfügbar.</p>
-    );
+    return <EmptyCalendar />;
   }
 
   return (
     <div className="space-y-8">
-      {/* Sticky weekday header — `--sticky-stack-top` (set by the page) offsets
-          it below the sticky card header so the two don't overlap. */}
-      <div
-        className="sticky z-10 bg-white/90 backdrop-blur-sm py-2 border-b border-slate-100"
-        style={{ top: 'var(--sticky-stack-top, 0px)' }}
-      >
-        <div className="grid grid-cols-[3rem_1fr] gap-2">
-          <div className="text-xs text-slate-400 text-right pr-1 pt-1">KW</div>
-          <div className="grid grid-cols-7 gap-1">
-            {DOW_LABELS.map((d) => (
-              <div key={d} className="text-xs font-medium text-slate-400 text-center">
-                {d}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <WeekdayHeader />
 
       {monthGroups.map((group) => (
         <section key={`${group.year}-${group.month}`}>
-          <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2">
-            {group.label}
-          </h2>
+          <MonthHeading label={group.label} />
 
           <div className="space-y-1">
             {group.weeks.map((week) => {
@@ -133,11 +121,11 @@ export default function AggregatedCalendar({
                   {divider && (
                     <PeriodDivider quarter={divider.quarter} semester={divider.semester} />
                   )}
-                  <div className="grid grid-cols-[3rem_1fr] gap-2 items-center">
-                    <div className="text-xs text-slate-400 text-right pr-1 tabular-nums">
+                  <div className={WEEK_ROW_CLASS}>
+                    <div className="pr-1 text-right text-xs text-bzz-muted tabular-nums">
                       {week.isoWeek}
                     </div>
-                    <div className="grid grid-cols-7 gap-1">
+                    <div className={DAYS_GRID_CLASS}>
                       {week.days.map((day, i) => (
                         <DayCell
                           key={day?.date ?? `empty-${week.isoWeek}-${i}`}
@@ -154,7 +142,7 @@ export default function AggregatedCalendar({
         </section>
       ))}
 
-      <p className="text-xs text-slate-400 text-center pt-2">Schuljahr {schoolYearName}</p>
+      <SchoolYearFootnote name={schoolYearName} />
     </div>
   );
 }

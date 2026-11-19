@@ -2,36 +2,34 @@ import Link from 'next/link';
 import McpRequestBadge from '@/components/McpRequestBadge';
 import VersionBadge from '@/components/VersionBadge';
 
+const LINK_CLASS = 'text-inherit hover:text-bzz-blau-text';
+
+/**
+ * BZZ-Fusszeile mit dem vorgegebenen Text; dahinter, gleich zurückhaltend,
+ * die rechtlichen Seiten, Version und MCP-Zähler.
+ */
 export default function SiteFooter() {
-  const year = new Date().getFullYear();
   return (
-    <footer className="border-t border-slate-200 bg-white/80">
-      <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center gap-2 text-xs text-slate-500">
-        <span className="flex items-center gap-2">
-          © {year} Bildungszentrum Zürichsee BZZ
-          <span className="text-slate-300" aria-hidden="true">
-            ·
-          </span>
-          <VersionBadge />
-        </span>
-        <nav className="sm:ml-auto flex items-center gap-4">
-          <Link href="/impressum" className="hover:text-indigo-600 transition-colors">
-            Impressum
-          </Link>
-          <Link href="/datenschutz" className="hover:text-indigo-600 transition-colors">
-            Datenschutz
-          </Link>
-          <a
-            href="https://www.bzz.ch"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-indigo-600 transition-colors"
-          >
-            bzz.ch
-          </a>
-          <McpRequestBadge />
-        </nav>
-      </div>
+    <footer className="bzz-container bzz-footer flex flex-col gap-2 sm:flex-row sm:items-center">
+      <span>© Bildungszentrum Zürichsee, Horgen</span>
+      <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 sm:ml-auto">
+        <Link href="/impressum" className={LINK_CLASS}>
+          Impressum
+        </Link>
+        <Link href="/datenschutz" className={LINK_CLASS}>
+          Datenschutz
+        </Link>
+        <a
+          href="https://www.bzz.ch"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={LINK_CLASS}
+        >
+          bzz.ch
+        </a>
+        <VersionBadge />
+        <McpRequestBadge />
+      </nav>
     </footer>
   );
 }

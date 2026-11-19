@@ -9,9 +9,9 @@ const classes: UntisClass[] = [
   { id: 2, name: 'ME23 a', longName: 'Mediamatik', active: true, companionNames: ['AB23 a'] },
 ];
 
-// The pill now holds three buttons (‹ prev, the dropdown trigger, next ›);
-// the trigger is the one carrying the "Klasse auswählen" label.
-const trigger = () => screen.getByRole('button', { name: 'Klasse auswählen' });
+// The button group holds three buttons (‹ prev, the dropdown trigger, next ›);
+// the trigger is the one labelled by the visible "Klasse" label (+ its current value).
+const trigger = () => screen.getByRole('button', { name: /^Klasse\b/ });
 
 function open() {
   return userEvent.setup().click(trigger());

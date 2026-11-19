@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { X, ExternalLink } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { buildDayTooltip, halfStatusLabel } from '@/src/lib/calendar';
 import { untisWeekHref } from '@/src/lib/untisLinks';
 import { HALF_DAY_COLORS } from '@/src/lib/calendar-styles';
 import DayTimetablePreview from '@/components/DayTimetablePreview';
+import DialogShell from '@/components/DialogShell';
 import type { CalendarDay, DayHalf, DayType } from '@/src/types';
 
 /** Day types that can carry lessons → worth an inline timetable preview. */
@@ -60,19 +59,6 @@ export default function SingleDayDialog({
   classNamesById,
   onClose,
 }: SingleDayDialogProps) {
-  // Latest-onClose ref so the key listener attaches once for the dialog's lifetime.
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    closeButtonRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCloseRef.current();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
   const classNameOf = (id?: number) => (id != null ? classNamesById?.get(id) : undefined);
 
   // Same fallback chain as the day cell: an empty half belongs to the day's
@@ -95,96 +81,67 @@ export default function SingleDayDialog({
   const showPreview = previewAllowed && PREVIEW_DAY_TYPES.has(day.type) && classIds.length > 0;
 
   const halfRow = (period: string, h: DayHalf) => (
-    <li className="flex items-baseline gap-2.5 text-sm">
+    <li className="bzz-row justify-start gap-3 text-[15px]">
       <span
-        className="inline-block w-3.5 h-3.5 rounded shrink-0 self-center border border-slate-200"
+        className="inline-block h-3.5 w-3.5 shrink-0 rounded-bzz ring-1 ring-bzz-line ring-inset"
         style={{ background: HALF_DAY_COLORS[h.status] }}
         aria-hidden="true"
       />
-      <span className="w-24 shrink-0 text-slate-500">{period}</span>
-      <span className="text-slate-900 min-w-0">
+      <span className="w-24 shrink-0 text-bzz-muted">{period}</span>
+      <span className="min-w-0">
         {halfStatusLabel(h.status)}
-        {h.reason && <span className="text-slate-600"> ({h.reason})</span>}
+        {h.reason && <span className="text-bzz-ink-2"> ({h.reason})</span>}
         {classNameOf(h.classId) && (
-          <span className="text-slate-400"> — {classNameOf(h.classId)}</span>
+          <span className="text-bzz-muted"> — {classNameOf(h.classId)}</span>
         )}
       </span>
     </li>
   );
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="single-day-title"
+    <DialogShell
+      title={formatDateLong(day.date)}
+      subtitle={`${subtitle}${detail && !day.halfDay ? ` — ${detail}` : ''}`}
+      onClose={onClose}
+      widthClass="max-w-lg"
+      capitalizeTitle
     >
-      <div
-        className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full max-h-[85vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between p-6 pb-4 shrink-0">
-          <div className="min-w-0">
-            <h2 id="single-day-title" className="text-lg font-semibold text-slate-900 capitalize">
-              {formatDateLong(day.date)}
-            </h2>
-            <p className="text-sm text-slate-500 mt-0.5">
-              {subtitle}
-              {detail && !day.halfDay ? ` — ${detail}` : ''}
-            </p>
-          </div>
-          <button
-            ref={closeButtonRef}
-            type="button"
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition-colors shrink-0"
-            aria-label="Schliessen"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto px-6 pb-6 space-y-4">
-          {day.halfDay && (
-            <ul className="space-y-2">
-              {halfRow('Vormittag', day.halfDay.morning)}
-              {halfRow('Nachmittag', day.halfDay.afternoon)}
-            </ul>
-          )}
-
-          {showPreview && <DayTimetablePreview classIds={classIds} date={day.date} />}
-
-          <ul className="space-y-1.5">
-            {linkIds.map((id) => {
-              const name = classNameOf(id);
-              return (
-                <li key={id}>
-                  <a
-                    href={untisWeekHref(monday, id)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors group"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-slate-900">
-                        {name ? `Stundenplan ${name}` : 'Stundenplan'} in WebUntis öffnen
-                      </p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Woche vom {formatWeekStart(monday)}
-                      </p>
-                    </div>
-                    <ExternalLink
-                      className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 shrink-0"
-                      aria-hidden="true"
-                    />
-                  </a>
-                </li>
-              );
-            })}
+      <div className="space-y-4">
+        {day.halfDay && (
+          <ul className="bzz-rows">
+            {halfRow('Vormittag', day.halfDay.morning)}
+            {halfRow('Nachmittag', day.halfDay.afternoon)}
           </ul>
-        </div>
+        )}
+
+        {showPreview && <DayTimetablePreview classIds={classIds} date={day.date} />}
+
+        <ul className="bzz-rows">
+          {linkIds.map((id) => {
+            const name = classNameOf(id);
+            return (
+              <li key={id}>
+                <a
+                  href={untisWeekHref(monday, id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bzz-row"
+                >
+                  <span className="min-w-0">
+                    <span className="block">
+                      {name ? `Stundenplan ${name}` : 'Stundenplan'} in WebUntis öffnen
+                    </span>
+                    <span className="bzz-muted block font-normal">
+                      Woche vom {formatWeekStart(monday)}
+                    </span>
+                    <span className="bzz-sr-only">(öffnet in neuem Tab)</span>
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
       </div>
-    </div>
+    </DialogShell>
   );
 }

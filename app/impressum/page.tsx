@@ -13,8 +13,10 @@ export default function ImpressumPage() {
         Bildungszentrums Zürichsee BZZ.
       </p>
 
-      <section className="space-y-2">
-        <h2 className="text-base font-semibold text-slate-900">Herausgeber / Betreiber</h2>
+      <section>
+        <h2 className="mt-0 mb-2 text-[22px] leading-tight text-bzz-ink">
+          Herausgeber / Betreiber
+        </h2>
         <p>
           Bildungszentrum Zürichsee BZZ
           <br />
@@ -22,63 +24,48 @@ export default function ImpressumPage() {
         </p>
       </section>
 
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold text-slate-900">Standorte</h2>
+      <section>
+        <h2 className="mt-0 mb-2 text-[22px] leading-tight text-bzz-ink">Standorte</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <p className="font-medium text-slate-900">Horgen See / Oberdorf</p>
+            <p className="m-0 font-bold text-bzz-ink">Horgen See / Oberdorf</p>
             <p>
               Seestrasse 110
               <br />
               8810 Horgen
               <br />
-              Tel.{' '}
-              <a href="tel:+41447274600" className="text-indigo-600 hover:underline">
-                +41 44 727 46 00
-              </a>
+              Tel. <a href="tel:+41447274600">+41 44 727 46 00</a>
               <br />
-              <a href="mailto:info@bzz.ch" className="text-indigo-600 hover:underline">
-                info@bzz.ch
-              </a>
+              <a href="mailto:info@bzz.ch">info@bzz.ch</a>
             </p>
           </div>
           <div>
-            <p className="font-medium text-slate-900">Stäfa</p>
+            <p className="m-0 font-bold text-bzz-ink">Stäfa</p>
             <p>
               Kirchbühlstrasse 21
               <br />
               8712 Stäfa
               <br />
-              Tel.{' '}
-              <a href="tel:+41449281620" className="text-indigo-600 hover:underline">
-                +41 44 928 16 20
-              </a>
+              Tel. <a href="tel:+41449281620">+41 44 928 16 20</a>
               <br />
-              <a href="mailto:info@bzz.ch" className="text-indigo-600 hover:underline">
-                info@bzz.ch
-              </a>
+              <a href="mailto:info@bzz.ch">info@bzz.ch</a>
             </p>
           </div>
         </div>
       </section>
 
-      <section className="space-y-2">
-        <h2 className="text-base font-semibold text-slate-900">Datenquelle</h2>
+      <section>
+        <h2 className="mt-0 mb-2 text-[22px] leading-tight text-bzz-ink">Datenquelle</h2>
         <p>
           Die angezeigten Stundenplan- und Ausfalldaten stammen aus dem Stundenplansystem WebUntis
           des BZZ.
         </p>
       </section>
 
-      <section className="space-y-2 border-t border-slate-100 pt-4 text-slate-500">
+      <section className="bzz-note">
         <p>
           Es gilt ergänzend das offizielle{' '}
-          <a
-            href="https://bzz.ch/impressum/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-indigo-600 hover:underline"
-          >
+          <a href="https://bzz.ch/impressum/" target="_blank" rel="noopener noreferrer">
             Impressum des BZZ
           </a>
           .

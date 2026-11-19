@@ -51,12 +51,12 @@ export default function CalendarLegend({ variant = 'single', detailsMode }: Cale
   const items =
     variant === 'aggregated' ? AGGREGATED_ITEMS : detailsMode ? SINGLE_ITEMS_DETAILS : SINGLE_ITEMS;
   return (
-    <div className="flex flex-wrap gap-3 text-xs">
+    <div className="bzz-legend mt-0 gap-x-4 gap-y-1 text-[13px] text-bzz-ink-2">
       {items.map(({ cellClass, label, swatchStyle }) => (
-        <div key={label} className="flex items-center gap-1.5">
-          <span className={`inline-block w-4 h-4 rounded ${cellClass}`} style={swatchStyle} />
-          <span className="text-slate-600">{label}</span>
-        </div>
+        <span key={label}>
+          <i className={cellClass} style={swatchStyle} aria-hidden="true" />
+          {label}
+        </span>
       ))}
     </div>
   );

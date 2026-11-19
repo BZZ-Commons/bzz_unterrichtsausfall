@@ -13,7 +13,7 @@ export default function VersionBadge() {
         type="button"
         onClick={() => setOpen(true)}
         title="Versionsverlauf anzeigen"
-        className="tabular-nums hover:text-indigo-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200 rounded"
+        className="cursor-pointer tabular-nums underline decoration-1 underline-offset-4 transition-colors hover:text-bzz-blau-text"
       >
         v{APP_VERSION}
       </button>

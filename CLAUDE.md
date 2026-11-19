@@ -8,9 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Stack
 
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 16 (App Router), Node.js 26 LTS (Docker + CI)
 - **Language**: TypeScript (`"strict": true`)
-- **UI**: React 19 + Tailwind CSS v4 + lucide-react icons
+- **UI**: React 19 + BZZ Design System (`src/styles/bzz-design.css`) + Tailwind CSS v4 + lucide-react icons
 - **WebUntis**: `webuntis` npm package — login/logout per request via `withUntisClient()` wrapper
 - **Testing**: Vitest + jsdom
 
@@ -66,7 +66,8 @@ app/
 components/               # ClassSelector, SchoolYearCalendar, CalendarLegend, IAVariantDialog
 src/
   types.ts                # All shared TypeScript interfaces
-  index.css               # Tailwind v4 entry
+  index.css               # Tailwind v4 entry + BZZ design import + --cal-* calendar colours
+  styles/bzz-design.css   # vendored copy of bzz.eifach.online/_eifach/design/design.css
   lib/
     calendar.ts           # classifyDays() + helpers (pure)
     classGroups.ts        # Companion class rules + IA variant resolution
@@ -84,7 +85,7 @@ API routes wrap their WebUntis work in `withUntisClient(async (untis) => …)` f
 
 ### MCP server
 
-`/api/mcp` exposes the calendar data as MCP tools (Streamable HTTP via `mcp-handler`). Tool registrations, cached data accessors, class resolution, and rate limiting live in `src/lib/mcp/`. Rate limit: 20 req/min/IP (in-memory), bypassed via the `MCP_ADMIN_KEY` env var + `?key=` query param. MCP data uses the serverCache with a 15-min TTL.
+`/api/mcp` exposes the calendar data as MCP tools (stateless Streamable HTTP via `mcp-handler` 2 / MCP SDK v2 `@modelcontextprotocol/server`; tool `inputSchema`s are full `z.object(...)` schemas, zod 4). Tool registrations, cached data accessors, class resolution, and rate limiting live in `src/lib/mcp/`. Rate limit: 20 req/min/IP (in-memory), bypassed via the `MCP_ADMIN_KEY` env var + `?key=` query param. MCP data uses the serverCache with a 15-min TTL.
 
 `/api/mcp-stats` returns the MCP request count of the last 15 minutes (in-memory, `src/lib/mcp/requestStats.ts`); `McpRequestBadge` shows it unobtrusively in the `SiteFooter`.
 
@@ -96,8 +97,21 @@ IA classes are a special case: they're shown standalone in the dropdown, and the
 
 ### UI conventions
 
-- All user-facing text in **German** (Swiss school dialect)
-- Color palette: slate (neutrals) + indigo (primary) + emerald (BM/positive) + orange (Schulausfall) + violet (Ferien) + amber (Feiertag)
+- All user-facing text in **German** (Swiss spelling: «ss», no «ß»), addressing users with «Sie»
+- Look follows the **BZZ Design System** (https://bzz.eifach.online/design/, rules in
+  `/_eifach/design/guidelines.md` there). `src/styles/bzz-design.css` is an unmodified copy
+  (except the font: Inter comes from `@fontsource-variable/inter`, no CDN) — re-download it
+  to update, don't edit it. It is imported into the Tailwind `components` layer, so utilities
+  still override it.
+- Use the `.bzz-*` building blocks (`bzz-card`, `bzz-btn`, `bzz-note`, `bzz-rows`, `bzz-tag`,
+  `bzz-field` …) and the `--bzz-*` tokens, exposed as Tailwind colours (`bg-bzz-grau`,
+  `text-bzz-muted`, `rounded-bzz` …). Radius 2 px everywhere, no shadows, surfaces instead
+  of borders (except input fields).
+- Page frame: white `SiteHeader` with the logo (`public/bzz-logo.svg`, fixed size), blue
+  `bzz-kopf` on the main page, `SiteFooter` with «© Bildungszentrum Zürichsee, Horgen».
+- Calendar colours are the `--cal-*` tokens in `src/index.css` (derived from BZZ colours):
+  Unterricht green, Unterrichtsausfall orange, Teilausfall pink, Veranstaltung blue,
+  Ferien violet, free days grey. Dialogs use `components/DialogShell.tsx`.
 
 ## Environment variables
 

@@ -1,18 +1,17 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { UntisClass } from '@/src/types';
 import { normalize } from '@/src/lib/classGroups';
 
 const LISTBOX_ID = 'class-selector-listbox';
 const LABEL_ID = 'class-selector-label';
+const VALUE_ID = 'class-selector-value';
 const optionId = (id: number): string => `class-option-${id}`;
 
 /** Shared styling for the prev/next arrow buttons flanking the dropdown trigger. */
-const ARROW_CLASS =
-  'flex items-center justify-center rounded-lg p-1.5 text-slate-600 transition-colors ' +
-  'hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40';
+const ARROW_CLASS = 'bzz-btn w-12 px-0';
 
 interface ClassSelectorProps {
   classes: UntisClass[];
@@ -137,18 +136,18 @@ export default function ClassSelector({
       (selectedClass.companionNames?.length ? ` (+${selectedClass.companionNames.join(', ')})` : '')
     : loading
       ? 'Lade Klassen …'
-      : '— Klasse wählen —';
+      : 'Bitte wählen';
 
   const disabled = loading || classes.length === 0;
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      <span id={LABEL_ID} className="sr-only">
-        Klasse auswählen
+      <span id={LABEL_ID} className="bzz-field-label">
+        Klasse
       </span>
 
-      {/* Combined pill: ‹ prev · trigger (filter dropdown) · next › */}
-      <div className="inline-flex items-center rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+      {/* Button group: ‹ prev · trigger (filter dropdown) · next › */}
+      <div className="bzz-segment flex-nowrap">
         <button
           type="button"
           disabled={disabled}
@@ -156,7 +155,7 @@ export default function ClassSelector({
           aria-label="Vorherige Klasse"
           className={ARROW_CLASS}
         >
-          <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+          <ChevronLeft className="h-5 w-5" aria-hidden="true" />
         </button>
 
         <button
@@ -166,28 +165,19 @@ export default function ClassSelector({
           onKeyDown={handleKeyDown}
           aria-haspopup="listbox"
           aria-expanded={open}
-          aria-labelledby={LABEL_ID}
-          className="flex items-center gap-1 rounded-lg px-2 py-1 text-sm
-                     hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-200
-                     disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+          aria-labelledby={`${LABEL_ID} ${VALUE_ID}`}
+          className="bzz-btn min-w-44 justify-between px-4"
         >
           <span
-            className={`min-w-[5rem] max-w-[12rem] truncate text-center ${selectedClass ? 'text-slate-900' : 'text-slate-400'}`}
+            id={VALUE_ID}
+            className={`max-w-[14rem] truncate ${selectedClass ? '' : 'font-normal text-bzz-muted'}`}
           >
             {displayLabel}
           </span>
-          <svg
-            className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`}
-            viewBox="0 0 20 20"
-            fill="currentColor"
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
             aria-hidden="true"
-          >
-            <path
-              fillRule="evenodd"
-              d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-              clipRule="evenodd"
-            />
-          </svg>
+          />
         </button>
 
         <button
@@ -197,15 +187,16 @@ export default function ClassSelector({
           aria-label="Nächste Klasse"
           className={ARROW_CLASS}
         >
-          <ChevronRight className="w-4 h-4" aria-hidden="true" />
+          <ChevronRight className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
 
-      {/* Dropdown — anchored to the right edge of the pill */}
+      {/* Dropdown — anchored below the button group. Bordered like a field so it
+          stays distinct when it overlaps the white calendar card. */}
       {open && (
-        <div className="absolute right-0 z-50 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white shadow-lg">
+        <div className="absolute left-0 z-50 mt-1 w-80 max-w-[calc(100vw-2rem)] rounded-bzz border-[1.5px] border-bzz-line-stark bg-bzz-weiss">
           {/* Filter input */}
-          <div className="p-2 border-b border-slate-100">
+          <div className="p-2">
             <input
               ref={inputRef}
               type="text"
@@ -226,8 +217,7 @@ export default function ClassSelector({
               }}
               onKeyDown={handleKeyDown}
               placeholder="Filtern …"
-              className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm
-                         focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              className="bzz-field"
             />
           </div>
 
@@ -237,10 +227,10 @@ export default function ClassSelector({
             id={LISTBOX_ID}
             role="listbox"
             aria-labelledby={LABEL_ID}
-            className="max-h-64 overflow-y-auto py-1"
+            className="m-0 max-h-72 list-none space-y-1 overflow-y-auto p-2 pt-0"
           >
             {filtered.length === 0 ? (
-              <li className="px-4 py-2 text-sm text-slate-400">Keine Treffer</li>
+              <li className="bzz-muted px-4 py-2">Keine Treffer</li>
             ) : (
               filtered.map((c, i) => {
                 const companions = c.companionNames?.length
@@ -256,13 +246,12 @@ export default function ClassSelector({
                     aria-selected={isSelected}
                     onMouseEnter={() => setActiveIndex(i)}
                     onClick={() => selectItem(c.id)}
-                    className={`px-4 py-2 text-sm cursor-pointer select-none transition-colors
-                      ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-900'}
-                      ${isSelected && !isActive ? 'font-medium' : ''}
-                    `}
+                    className={`cursor-pointer rounded-bzz px-4 py-2 text-[15px] select-none transition-colors ${
+                      isActive ? 'bg-bzz-softblau text-bzz-blau-text' : 'bg-bzz-grau'
+                    } ${isSelected ? 'font-bold' : ''}`}
                   >
                     {c.name}
-                    {companions && <span className="text-slate-400 ml-1">{companions}</span>}
+                    {companions && <span className="ml-1 text-bzz-muted">{companions}</span>}
                   </li>
                 );
               })

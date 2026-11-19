@@ -18,13 +18,16 @@ import { recordMcpRequest } from '@/src/lib/mcp/requestStats';
 
 export const dynamic = 'force-dynamic';
 
+// Stateless Streamable HTTP; the route path (/api/mcp) is the mount point.
 const handler = createMcpHandler(
   (server) => {
     registerTools(server);
   },
-  { serverInfo: { name: 'unterrichtsausfall-bzz', version: '1.0.0' } },
-  { basePath: '/api', verboseLogs: false, disableSse: true, maxDuration: 60 },
+  { serverInfo: { name: 'unterrichtsausfall-bzz', version: '1.0.0' }, verboseLogs: false },
 );
+
+// Generous upper bound for cold WebUntis fetches (was the handler's maxDuration in 1.x).
+export const maxDuration = 60;
 
 /** Returns a 429 response when the caller is rate-limited, or null to proceed. */
 function guard(req: Request): Response | null {
