@@ -278,9 +278,6 @@ export default function HomePage() {
             {selectedSchoolYear ? `Schuljahr ${selectedSchoolYear.name}` : 'Schuljahreskalender'}
           </p>
           <h1>Unterrichtsausfälle</h1>
-          <p className="bzz-lead">
-            Ausfälle, Veranstaltungen und Ferien pro Klasse – direkt aus WebUntis.
-          </p>
         </div>
       </div>
 
