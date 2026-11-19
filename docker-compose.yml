@@ -3,7 +3,7 @@ name: unterrichtsausfaelle
 # Runtime config is read from a local .env file (one KEY=VALUE per line, gitignored).
 # Create it from .env.example:
 #   cp .env.example .env  &&  edit the four WEBUNTIS_* values
-# The same .env scheme is used on deplo.io (there the vars are set via the Cockpit UI).
+# Local use only — production runs on deplo.io (vars set via the Cockpit UI there).
 
 services:
   app:

@@ -113,6 +113,13 @@ IA classes are a special case: they're shown standalone in the dropdown, and the
   Unterricht green, Unterrichtsausfall orange, Teilausfall pink, Veranstaltung blue,
   Ferien violet, free days grey. Dialogs use `components/DialogShell.tsx`.
 
+## Deployment
+
+Production runs on **deplo.io (Nine)** at https://unterrichtsausfall.bzz.ch
+(`unterrichtsausfaelle.bzz.ch` redirects there, see `next.config.ts`). deplo.io builds the
+Dockerfile from `main` on every push — **deploy = commit + push to `main`**, nothing else.
+Runtime secrets are set in the deplo.io Cockpit. The old it.bzz.ch setup no longer exists.
+
 ## Environment variables
 
 ```

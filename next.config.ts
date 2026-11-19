@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/:path*',
-        has: [{ type: 'host', value: 'unterrichtsausfaelle.it.bzz.ch' }],
-        destination: 'https://unterrichtsausfall.it.bzz.ch/:path*',
+        has: [{ type: 'host', value: 'unterrichtsausfaelle.bzz.ch' }],
+        destination: 'https://unterrichtsausfall.bzz.ch/:path*',
         permanent: true,
       },
     ];

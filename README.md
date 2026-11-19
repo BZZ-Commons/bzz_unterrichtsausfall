@@ -151,12 +151,23 @@ bleibt beim Wechsel von Klasse und Schuljahr erhalten.
 
 ## Deployment
 
-Docker (multi-stage Build → `node:26-alpine`-Runner, non-root `nextjs`-User,
-Next.js `output: 'standalone'`):
+Produktiv auf **deplo.io (Nine)** unter
+[unterrichtsausfall.bzz.ch](https://unterrichtsausfall.bzz.ch)
+(`unterrichtsausfaelle.bzz.ch` leitet dorthin um). Beide Hostnamen zeigen per CNAME
+auf `unterrichtsausfall.2368aef.deploio.app`; TLS verwaltet deplo.io.
+
+- **Deploy = Push auf `main`.** deplo.io baut das Image aus dem
+  [Dockerfile](Dockerfile) (Multi-Stage, `node:26-alpine`, non-root `nextjs`-User,
+  Next.js `output: 'standalone'`) und rollt es aus. Kein manueller Schritt.
+- Container lauscht auf Port **3000**.
+- Die `WEBUNTIS_*`-Variablen und optional `MCP_ADMIN_KEY` sind im deplo.io-Cockpit als
+  Laufzeit-Variablen gesetzt. Der Entrypoint bricht ab, wenn eine `WEBUNTIS_*`-Variable
+  fehlt.
+- MCP-Endpoint: `https://unterrichtsausfall.bzz.ch/api/mcp` (optional `?key=<MCP_ADMIN_KEY>`).
+
+Lokal lässt sich dasselbe Image mit Docker Compose starten (liest `.env`, Port
+`127.0.0.1:3002`):
 
 ```bash
 docker compose up -d --build
 ```
-
-Produktiv unter [schulausfall.it.bzz.ch](https://schulausfall.it.bzz.ch) — Apache
-reverse-proxy auf Container-Port 3002.
